@@ -958,6 +958,9 @@ def distributed_masked_mean(local_tensor, local_mask):
     Returns:
         torch.Tensor: Global mean of all valid elements across processes
     """
+    # Multiplication does not mask NaNs (`NaN * 0` is still NaN), which can
+    # contaminate the reduced sum when padded positions contain invalid values.
+    local_tensor = torch.where(local_mask.bool(), local_tensor, 0.0)
     local_tensor = local_tensor * local_mask
 
     local_sum = torch.sum(local_tensor)

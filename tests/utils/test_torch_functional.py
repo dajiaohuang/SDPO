@@ -122,6 +122,30 @@ def test_distributed_masked_mean(world_size, tmp_path):
     )
 
 
+@pytest.mark.parametrize(
+    "values,mask,expected",
+    [
+        ([1.0, float("nan"), 3.0], [1.0, 0.0, 1.0], 2.0),
+        ([1.0, 3.0], [1.0, 1.0], 2.0),
+    ],
+)
+def test_distributed_masked_mean_masks_nan_padding(monkeypatch, values, mask, expected):
+    # Exercise the local reduction without requiring an initialized process group.
+    monkeypatch.setattr(torch.distributed, "all_reduce", lambda tensor, op: None)
+
+    result = distributed_masked_mean(torch.tensor(values), torch.tensor(mask))
+
+    assert torch.allclose(result, torch.tensor(expected))
+
+
+def test_distributed_masked_mean_preserves_zero_mask_result(monkeypatch):
+    monkeypatch.setattr(torch.distributed, "all_reduce", lambda tensor, op: None)
+
+    result = distributed_masked_mean(torch.tensor([float("nan")]), torch.tensor([0.0]))
+
+    assert torch.isnan(result)
+
+
 def test_expand_as_nested():
     a = torch.randn(2)
     b = torch.randn(3)
