@@ -47,6 +47,7 @@ from verl import DataProto
 from verl.models.transformers.monkey_patch import apply_monkey_patch
 from verl.single_controller.base import Worker
 from verl.single_controller.base.decorator import Dispatch, make_nd_compute_dataproto_dispatch_fn, register
+from verl.trainer.ppo.sdpo_utils import load_sdpo_teacher_checkpoint, save_sdpo_teacher_checkpoint
 from verl.utils import hf_processor, hf_tokenizer
 from verl.utils.activation_offload import enable_activation_offloading
 from verl.utils.checkpoint.fsdp_checkpoint_manager import FSDPCheckpointManager
@@ -195,6 +196,7 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
         self._is_rollout = self.role in ["rollout", "actor_rollout", "actor_rollout_ref"]
         self._is_ref = self.role in ["ref", "actor_rollout_ref"]
         self.use_orig_params = self.config.actor.fsdp_config.get("use_orig_params", False)
+        self.sdpo_teacher_checkpoint_manager = None
 
         # TODO(haibin.lin):
         # As of now the type of config is DictConfig, if we assign config.profiler with ProfilerConfig,
@@ -903,6 +905,17 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
                         )
                     else:
                         self.actor.teacher_module = self.ref_module_fsdp
+                        if self_distillation_cfg.get("teacher_update_rate", 0.0) > 0.0:
+                            teacher_checkpoint_contents = OmegaConf.create(
+                                {"load_contents": ["model"], "save_contents": ["model"]}
+                            )
+                            self.sdpo_teacher_checkpoint_manager = FSDPCheckpointManager(
+                                model=self.ref_module_fsdp,
+                                optimizer=None,
+                                lr_scheduler=None,
+                                processing_class=self.processor if self.processor is not None else self.tokenizer,
+                                checkpoint_config=teacher_checkpoint_contents,
+                            )
 
         if self._is_actor:
             self.flops_counter = FlopsCounter(self.actor_model_config)
@@ -1122,6 +1135,9 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
         self.checkpoint_manager.save_checkpoint(
             local_path=local_path, hdfs_path=hdfs_path, global_step=global_step, max_ckpt_to_keep=max_ckpt_to_keep
         )
+        save_sdpo_teacher_checkpoint(
+            self.sdpo_teacher_checkpoint_manager, local_path, global_step, max_ckpt_to_keep
+        )
         dist.barrier()
 
         if self._is_lora and hasattr(getattr(self, "actor_module", self.actor_module_fsdp), "peft_config"):
@@ -1179,6 +1195,7 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
         self.checkpoint_manager.load_checkpoint(
             local_path=local_path, hdfs_path=hdfs_path, del_local_after_load=del_local_after_load
         )
+        load_sdpo_teacher_checkpoint(self.sdpo_teacher_checkpoint_manager, local_path, del_local_after_load)
 
         if self._is_offload_param:
             offload_fsdp_model_to_cpu(self.actor_module_fsdp)
