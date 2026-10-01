@@ -142,7 +142,7 @@ class RayResourcePool(ResourcePool):
         ray.get([pg.ready() for pg in pgs])
 
         self.pgs = sort_placement_group_by_node_ip(pgs)
-        return pgs
+        return self.pgs
 
 
 class SubRayResourcePool(RayResourcePool):
