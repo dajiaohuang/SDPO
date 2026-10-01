@@ -72,8 +72,10 @@ class EnvLoop:
 
         loop = asyncio.get_event_loop()
         self.rollout_wg.switch_to_rollout()
-        output = loop.run_until_complete(self.run(prompts, reset_results))
-        self.rollout_wg.switch_to_train()
+        try:
+            output = loop.run_until_complete(self.run(prompts, reset_results))
+        finally:
+            self.rollout_wg.switch_to_train()
         # TODO(caiyunke.astra): add timing metrics
         return output
 
