@@ -21,7 +21,6 @@ import argparse
 import os
 
 import datasets
-
 from verl.utils.hdfs_io import copy, makedirs
 
 if __name__ == "__main__":
@@ -71,6 +70,9 @@ if __name__ == "__main__":
         print("Warning: Argument 'local_dir' is deprecated. Please use 'local_save_dir' instead.")
     else:
         local_save_dir = args.local_save_dir
+
+    local_save_dir = os.path.expanduser(local_save_dir)
+    os.makedirs(local_save_dir, exist_ok=True)
 
     train_dataset.to_parquet(os.path.join(local_save_dir, "train.parquet"))
 
