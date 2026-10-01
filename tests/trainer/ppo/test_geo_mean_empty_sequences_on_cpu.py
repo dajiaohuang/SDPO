@@ -18,7 +18,7 @@ def test_geo_mean_loss_ignores_fully_masked_sequences():
     mixed_loss, _ = compute_policy_loss_geo_mean(
         old_log_prob=torch.cat((old_log_prob, torch.zeros_like(old_log_prob))),
         log_prob=torch.cat((log_prob, torch.zeros_like(log_prob))),
-        advantages=torch.cat((advantages, torch.full_like(advantages, 9.0))),
+        advantages=torch.cat((advantages, torch.full_like(advantages, float("nan")))),
         response_mask=torch.cat((response_mask, torch.zeros_like(response_mask))),
         config=config,
     )
