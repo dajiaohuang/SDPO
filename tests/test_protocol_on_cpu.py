@@ -192,6 +192,17 @@ def test_reorder():
     assert data.meta_info == {"name": "abdce"}
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required to test CUDA reorder indices")
+def test_reorder_with_cuda_indices():
+    obs = torch.tensor([1, 2, 3, 4, 5, 6], device="cuda")
+    labels = ["a", "b", "c", "d", "e", "f"]
+    data = DataProto.from_dict(tensors={"obs": obs}, non_tensors={"labels": labels}, meta_info={"name": "abdce"})
+    data.reorder(torch.tensor([3, 4, 2, 0, 1, 5], device="cuda"))
+
+    assert torch.equal(data.batch["obs"], torch.tensor([4, 5, 3, 1, 2, 6], device="cuda"))
+    assert np.array_equal(data.non_tensor_batch["labels"], np.array(["d", "e", "c", "a", "b", "f"]))
+
+
 def test_chunk_concat():
     obs = torch.tensor([1, 2, 3, 4, 5, 6])
     labels = ["a", "b", "c", "d", "e", "f"]

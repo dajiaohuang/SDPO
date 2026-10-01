@@ -975,7 +975,7 @@ class DataProto:
         """
         Note that this operation is in-place
         """
-        indices_np = indices.detach().numpy()
+        indices_np = indices.detach().cpu().numpy()
         self.batch = self.batch[indices]
         self.non_tensor_batch = {key: val[indices_np] for key, val in self.non_tensor_batch.items()}
 
