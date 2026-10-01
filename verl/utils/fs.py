@@ -289,8 +289,7 @@ def local_mkdir_safe(path):
         working_dir = os.getcwd()
         path = os.path.join(working_dir, path)
 
-    # Using hash value of path as lock file name to avoid long file name
-    lock_filename = f"ckpt_{hash(path) & 0xFFFFFFFF:08x}.lock"
+    lock_filename = _get_local_mkdir_lock_filename(path)
     lock_path = os.path.join(tempfile.gettempdir(), lock_filename)
 
     try:
@@ -303,3 +302,10 @@ def local_mkdir_safe(path):
         os.makedirs(path, exist_ok=True)
 
     return path
+
+
+def _get_local_mkdir_lock_filename(path):
+    """Return a stable lock filename for a local path across processes."""
+    normalized_path = os.path.normcase(os.path.normpath(os.path.abspath(path)))
+    path_hash = hashlib.sha256(os.fsencode(normalized_path)).hexdigest()
+    return f"ckpt_{path_hash}.lock"
