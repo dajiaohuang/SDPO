@@ -250,7 +250,7 @@ def unfold_batch_dim(data: "DataProto", batch_dims=2):
 
 
 def serialize_single_tensor(obj: torch.Tensor) -> tuple[str, tuple[int, ...], int | memoryview]:
-    data = obj.flatten().contiguous().view(torch.uint8).numpy()
+    data = obj.flatten().contiguous().view(torch.uint8).cpu().numpy()
     dtype = str(obj.dtype).removeprefix("torch.")
     return dtype, obj.shape, data
 

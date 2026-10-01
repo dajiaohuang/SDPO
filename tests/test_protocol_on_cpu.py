@@ -203,6 +203,16 @@ def test_reorder_with_cuda_indices():
     assert np.array_equal(data.non_tensor_batch["labels"], np.array(["d", "e", "c", "a", "b", "f"]))
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required to test CUDA tensor serialization")
+def test_serialize_deserialize_cuda_tensor():
+    original_tensor = torch.tensor([[1.0, 2.0], [3.0, 4.0]], device="cuda")
+
+    dtype, shape, data = serialize_single_tensor(original_tensor)
+    reconstructed_tensor = deserialize_single_tensor((dtype, shape, data))
+
+    assert torch.equal(reconstructed_tensor, original_tensor.cpu())
+
+
 def test_chunk_concat():
     obs = torch.tensor([1, 2, 3, 4, 5, 6])
     labels = ["a", "b", "c", "d", "e", "f"]
