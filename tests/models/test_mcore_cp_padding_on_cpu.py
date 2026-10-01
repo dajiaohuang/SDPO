@@ -12,7 +12,7 @@ class _PackedSeqParams:
         self.__dict__.update(kwargs)
 
 
-def _load_preprocessor(monkeypatch, cp_size: int, cp_rank: int):
+def _load_util(monkeypatch, cp_size: int, cp_rank: int):
     mpu = SimpleNamespace(
         get_tensor_model_parallel_world_size=lambda: 1,
         get_context_parallel_world_size=lambda: cp_size,
@@ -40,13 +40,21 @@ def _load_preprocessor(monkeypatch, cp_size: int, cp_rank: int):
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.preprocess_thd_no_padding
+    return module
 
 
 def _run_preprocessor(monkeypatch, values: list[int], cp_size: int, cp_rank: int, need_roll: bool):
-    preprocess = _load_preprocessor(monkeypatch, cp_size, cp_rank)
+    preprocess = _load_util(monkeypatch, cp_size, cp_rank).preprocess_thd_no_padding
     input_ids = torch.nested.as_nested_tensor([torch.tensor(values)], layout=torch.jagged)
     output, _ = preprocess(input_ids, pre_process=True, need_roll=need_roll)
+    return output[0].tolist()
+
+
+def _run_packed_preprocessor(monkeypatch, values: list[int], cp_size: int, cp_rank: int):
+    preprocess = _load_util(monkeypatch, cp_size, cp_rank).preprocess_packed_seqs
+    input_ids = torch.tensor([values])
+    attention_mask = torch.ones_like(input_ids, dtype=torch.bool)
+    output, _ = preprocess(input_ids, attention_mask, pre_process=True)
     return output[0].tolist()
 
 
@@ -64,6 +72,19 @@ def test_shorter_than_front_chunk_has_no_assignment_or_boundary_error(monkeypatc
 
     assert rank_zero[0] == 10
     assert rank_one == [0, 0]
+
+
+@pytest.mark.parametrize("cp_rank,expected", [(0, [10, 0]), (1, [11, 0])])
+def test_padded_path_preserves_short_row_cp_chunks(monkeypatch, cp_rank, expected):
+    output = _run_packed_preprocessor(monkeypatch, [10, 11], cp_size=2, cp_rank=cp_rank)
+
+    assert output == expected
+
+
+def test_padded_path_leaves_empty_short_row_chunks_zero(monkeypatch):
+    output = _run_packed_preprocessor(monkeypatch, [10], cp_size=2, cp_rank=1)
+
+    assert output == [0, 0]
 
 
 @pytest.mark.parametrize("cp_rank,expected_valid_labels", [(0, [11, 12]), (1, [13, 14, 10])])

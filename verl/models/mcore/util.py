@@ -87,9 +87,11 @@ def preprocess_packed_seqs(
             start_idx = cu_seqlens_padded_cpu[i] // cp_size
             # split to 2 chunks
             d = input_ids[i, attention_mask[i]]
-            input_ids_rmpad[start_idx : start_idx + half_seqlen] = d[
-                half_seqlen * cp_rank : half_seqlen * (cp_rank + 1)
-            ]
+            front_start = half_seqlen * cp_rank
+            front_end = front_start + half_seqlen
+            front_len = max(0, min(front_end, d.shape[0]) - front_start)
+            if front_len > 0:
+                input_ids_rmpad[start_idx : start_idx + front_len] = d[front_start : front_start + front_len]
 
             remain_start = seqlen_padded_i - half_seqlen * (cp_rank + 1)
             remain_end = seqlen_padded_i - half_seqlen * cp_rank
