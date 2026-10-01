@@ -305,7 +305,7 @@ Located at `actor.self_distillation` in the config. Only active when `actor.poli
 
 - **alpha** (float, default: `0.5`): KL interpolation coefficient. `0.0` = forward KL, `1.0` = reverse KL, `0.5` = JSD.
 
-- **success_reward_threshold** (float, default: `1.0`): Minimum sequence reward to be considered a successful demonstration.
+- **success_reward_threshold** (float, bundled YAML default: `0.5`; dataclass default: `1.0`): Minimum sequence reward to be considered a successful demonstration.
 
 - **teacher_regularization** (str, default: `"ema"`): Teacher regularization mode. Options: `ema`, `trust-region`. Note: if `ema` is used, the model on the `RefWorker` is updated as an exponential moving average. `trust-region` requires `use_fused_kernels = False`.
 
