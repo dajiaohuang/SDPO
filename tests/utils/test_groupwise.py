@@ -21,7 +21,7 @@ import numpy as np
 import pytest
 import torch
 
-from verl.utils import as_torch_index, group_mean_std
+from verl.utils import as_torch_index, group_mean_std, groupwise
 
 
 def test_as_torch_index_basic_integers():
@@ -31,6 +31,20 @@ def test_as_torch_index_basic_integers():
     # Values should be contiguous 0..G-1, keeping equal labels equal
     assert g.tolist()[0] == g.tolist()[1]
     assert len(torch.unique(g)) == 3  # {2,5,7} -> 3 groups
+    assert g.tolist() == [0, 0, 1, 2, 1, 0]
+
+
+def test_as_torch_index_factorizes_negative_and_torch_integer_labels():
+    assert as_torch_index([-2, 5, -2]).tolist() == [0, 1, 0]
+    assert as_torch_index(torch.tensor([10, 3, 10])).tolist() == [1, 0, 1]
+
+
+def test_as_torch_index_default_device_is_a_torch_device(monkeypatch):
+    monkeypatch.delenv("VERL_FORCE_DEVICE", raising=False)
+    monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+    monkeypatch.setattr(groupwise, "get_device_name", lambda: "cpu")
+
+    assert as_torch_index([0, 1]).device.type == "cpu"
 
 
 def test_as_torch_index_near_integer_floats():

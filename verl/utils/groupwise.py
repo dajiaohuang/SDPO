@@ -46,7 +46,7 @@ from typing import Any, Optional
 import numpy as np
 import torch
 
-from verl.utils.device import get_torch_device
+from verl.utils.device import get_device_name
 
 __all__ = ["as_torch_index", "group_mean_std"]
 
@@ -71,7 +71,7 @@ def _resolve_device(explicit: Optional[torch.device | str]) -> torch.device:
     if "PYTEST_CURRENT_TEST" in os.environ:
         return torch.device("cpu")
 
-    return get_torch_device()
+    return torch.device(get_device_name())
 
 
 def _to_1d_numpy_object_array(x: Any) -> np.ndarray:
@@ -112,13 +112,15 @@ def as_torch_index(index: Any, device: torch.device | str | None = None) -> torc
             getattr(torch, "uint8", torch.uint8),
             torch.bool,
         ):
-            return t.to(device=target, dtype=torch.long)
+            return torch.unique(t, sorted=True, return_inverse=True)[1].to(device=target, dtype=torch.long)
 
         if t.dtype in (torch.float16, torch.float32, torch.float64, torch.bfloat16):
             t64 = t.to(dtype=torch.float64)
             rounded = torch.round(t64)
             if torch.allclose(t64, rounded, rtol=0.0, atol=1e-6):
-                return rounded.to(device=target, dtype=torch.long)
+                return torch.unique(rounded, sorted=True, return_inverse=True)[1].to(
+                    device=target, dtype=torch.long
+                )
             arr = np.array([str(x.item()) for x in t], dtype=object)
         else:
             arr = np.array([str(x.item()) if hasattr(x, "item") else str(x) for x in t], dtype=object)
@@ -129,20 +131,26 @@ def as_torch_index(index: Any, device: torch.device | str | None = None) -> torc
 
         # Pure integers (incl. bool)
         if arr.dtype != object and np.issubdtype(arr.dtype, np.integer):
-            return torch.from_numpy(arr.astype(np.int64, copy=False)).to(device=target)
+            return torch.from_numpy(np.unique(arr, return_inverse=True)[1].astype(np.int64, copy=False)).to(
+                device=target
+            )
 
         # Floats nearly equal to integers
         if arr.dtype != object and np.issubdtype(arr.dtype, np.floating):
             arr64 = arr.astype(np.float64, copy=False)
             rounded = np.rint(arr64)
             if np.allclose(arr64, rounded, rtol=0.0, atol=1e-6):
-                return torch.from_numpy(rounded.astype(np.int64)).to(device=target)
+                return torch.from_numpy(np.unique(rounded, return_inverse=True)[1].astype(np.int64, copy=False)).to(
+                    device=target
+                )
             # fall through
 
         # Try numeric string coercion
         try:
             coerced = arr.astype(np.int64)
-            return torch.from_numpy(coerced).to(device=target)
+            return torch.from_numpy(np.unique(coerced, return_inverse=True)[1].astype(np.int64, copy=False)).to(
+                device=target
+            )
         except Exception:
             pass
 
