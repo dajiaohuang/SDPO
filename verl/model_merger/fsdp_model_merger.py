@@ -140,6 +140,11 @@ class FSDPModelMerger(BaseModelMerger):
 
         raise NotImplementedError(f"Unsupported placement: {placement}")
 
+    @staticmethod
+    def _cast_model_tensor(tensor: torch.Tensor) -> torch.Tensor:
+        """Cast floating-point model weights to bfloat16 without changing buffer dtypes."""
+        return tensor.bfloat16() if tensor.is_floating_point() else tensor
+
     def _load_and_merge_state_dicts(
         self, world_size: int, total_shards: int, mesh_shape: tuple[int, ...], mesh_dim_names: tuple[str, ...]
     ) -> dict[str, torch.Tensor]:
@@ -166,7 +171,7 @@ class FSDPModelMerger(BaseModelMerger):
                 # add tensor shard in order of rank to state_dict[key]
                 tensor = model_state_shard.pop(key)
                 if isinstance(tensor, DTensor):
-                    state_dict[key].append(tensor._local_tensor.bfloat16())
+                    state_dict[key].append(self._cast_model_tensor(tensor._local_tensor))
 
                     placements = tuple(tensor.placements)
                     # replicated placement at dp dimension can be discarded
@@ -178,7 +183,7 @@ class FSDPModelMerger(BaseModelMerger):
                     else:
                         assert param_placements[key] == placements
                 else:
-                    state_dict[key].append(tensor.bfloat16())
+                    state_dict[key].append(self._cast_model_tensor(tensor))
 
         del model_state_dict_lst
 
