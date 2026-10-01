@@ -333,9 +333,11 @@ def preprocess_thd_no_padding(
             start_idx = cu_seqlens_padded_cpu[i] // cp_size
             # split to 2 chunks
             d = input_ids[i]
-            input_ids_rmpad[start_idx : start_idx + half_seqlen] = d[
-                half_seqlen * cp_rank : half_seqlen * (cp_rank + 1)
-            ]
+            front_start = half_seqlen * cp_rank
+            front_end = front_start + half_seqlen
+            front_len = max(0, min(front_end, d.shape[0]) - front_start)
+            if front_len > 0:
+                input_ids_rmpad[start_idx : start_idx + front_len] = d[front_start : front_start + front_len]
 
             remain_start = seqlen_padded_i - half_seqlen * (cp_rank + 1)
             remain_end = seqlen_padded_i - half_seqlen * cp_rank
@@ -348,7 +350,10 @@ def preprocess_thd_no_padding(
 
             if need_roll:
                 # Handle roll for cp_size > 1 case
-                saved_roll_dict[start_idx + half_seqlen - 1] = d[(cp_rank + 1) * half_seqlen]
+                if front_len > 0:
+                    front_last_idx = start_idx + front_len - 1
+                    next_idx = front_start + front_len
+                    saved_roll_dict[front_last_idx] = d[next_idx] if next_idx < d.shape[0] else d[0]
                 if remain_len > 0:
                     if remain_end == d.shape[0]:
                         saved_roll_dict[start_idx + half_seqlen + remain_len - 1] = d[0]
