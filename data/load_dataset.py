@@ -1,7 +1,7 @@
 import argparse
 import numpy as np
 from pathlib import Path
-from datasets import Dataset
+from datasets import Dataset, load_dataset
 
 from data.format.train import load_train
 from data.format.gpqa import load_gpqa
@@ -46,7 +46,8 @@ def load_dataset_hf(
     elif dataset_name in ["open-r1/codeforces", "Qwen/CodeElo", "livecodebench/code_generation_lite-v6", "evalplus/humanevalplus", "evalplus/mbppplus"]:
         ds = load_code(dataset_name)
     elif dataset_name == "tooluse":
-        print("Tooluse dataset is already loaded. You can proceed to preprocess it.")
+        tooluse_train_path = Path(__file__).resolve().parents[1] / "datasets" / "tooluse" / "train.json"
+        ds = load_dataset("json", data_files=str(tooluse_train_path), split="train")
     elif dataset_name in ["Biology", "Chemistry", "Material", "Physics"]:
         ds = load_sciknoweval(
             domains=[dataset_name],
@@ -55,7 +56,8 @@ def load_dataset_hf(
         )
     else:
         raise ValueError(f"Dataset {dataset_name} not supported.")
-    ds = ds.add_column("idx", list(range(len(ds))))
+    if "idx" not in ds.column_names:
+        ds = ds.add_column("idx", list(range(len(ds))))
     ds = _add_embeddings(ds, embeddings_file=embeddings_file)
 
 
