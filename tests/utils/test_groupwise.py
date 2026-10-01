@@ -39,6 +39,12 @@ def test_as_torch_index_factorizes_negative_and_torch_integer_labels():
     assert as_torch_index(torch.tensor([10, 3, 10])).tolist() == [1, 0, 1]
 
 
+def test_as_torch_index_preserves_non_integer_and_mixed_numeric_labels():
+    assert as_torch_index([1.2, 1.8, 1.2]).tolist() == [0, 1, 0]
+    assert as_torch_index(["42", 42]).tolist() == [1, 0]
+    assert as_torch_index(["0042", 42]).tolist() == [1, 0]
+
+
 def test_as_torch_index_default_device_is_a_torch_device(monkeypatch):
     monkeypatch.delenv("VERL_FORCE_DEVICE", raising=False)
     monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)

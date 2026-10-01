@@ -76,6 +76,10 @@ def _resolve_device(explicit: Optional[torch.device | str]) -> torch.device:
 
 def _to_1d_numpy_object_array(x: Any) -> np.ndarray:
     """Best-effort: convert arbitrary input into a 1-D numpy array; fallback to object dtype."""
+    if isinstance(x, list | tuple) and x and len({type(value) for value in x}) > 1:
+        arr = np.asarray(x, dtype=object)
+        return arr.reshape(-1)
+
     try:
         arr = np.asarray(x)
     except Exception:
@@ -145,15 +149,6 @@ def as_torch_index(index: Any, device: torch.device | str | None = None) -> torc
                 )
             # fall through
 
-        # Try numeric string coercion
-        try:
-            coerced = arr.astype(np.int64)
-            return torch.from_numpy(np.unique(coerced, return_inverse=True)[1].astype(np.int64, copy=False)).to(
-                device=target
-            )
-        except Exception:
-            pass
-
         if arr.dtype != object:
             arr = arr.astype(object)
 
@@ -161,8 +156,10 @@ def as_torch_index(index: Any, device: torch.device | str | None = None) -> torc
     try:
         _, inv = np.unique(arr, return_inverse=True)
     except Exception:
-        sarr = np.array([str(x) for x in arr], dtype=object)
-        _, inv = np.unique(sarr, return_inverse=True)
+        typed_labels = np.array(
+            [f"{type(x).__module__}.{type(x).__qualname__}:{x!r}" for x in arr], dtype=object
+        )
+        _, inv = np.unique(typed_labels, return_inverse=True)
 
     inv = inv.astype(np.int64, copy=False)
     return torch.from_numpy(inv).to(device=target)
