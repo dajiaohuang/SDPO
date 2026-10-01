@@ -525,27 +525,16 @@ def get_group_balanced_partitions(
     """
     assert len(seqlen_list) == len(uid_list), "seqlen_list and uid_list must have same length"
 
-    # Build groups: each group contains indices of samples with the same uid
-    # Assumes samples with same uid are contiguous
-    groups = []  # List of (group_indices, group_total_seqlen)
-    current_uid = None
-    current_indices = []
-    current_seqlen = 0
-
+    # Build groups by uid, even when samples for one uid are not contiguous.
+    groups_by_uid = {}
     for i, (seqlen, uid) in enumerate(zip(seqlen_list, uid_list, strict=False)):
-        if uid != current_uid:
-            if current_indices:
-                groups.append((current_indices, current_seqlen))
-            current_uid = uid
-            current_indices = [i]
-            current_seqlen = seqlen
-        else:
-            current_indices.append(i)
-            current_seqlen += seqlen
+        if uid not in groups_by_uid:
+            groups_by_uid[uid] = ([], 0)
+        group_indices, group_seqlen = groups_by_uid[uid]
+        group_indices.append(i)
+        groups_by_uid[uid] = (group_indices, group_seqlen + seqlen)
 
-    # Don't forget the last group
-    if current_indices:
-        groups.append((current_indices, current_seqlen))
+    groups = list(groups_by_uid.values())
 
     num_groups = len(groups)
     assert num_groups >= k_partitions, (

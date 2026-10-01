@@ -234,6 +234,20 @@ def test_group_balanced_partitions():
             assert all(i in partition for i in uid_indices), f"uid {uid} samples split across partitions"
 
 
+def test_group_balanced_partitions_keeps_noncontiguous_uids_together():
+    from verl.utils.seqlen_balancing import get_group_balanced_partitions
+
+    seqlen_list = [100, 200, 150, 50, 120, 170, 80, 60]
+    uid_list = ["a", "b", "a", "c", "b", "d", "c", "d"]
+
+    partitions = get_group_balanced_partitions(seqlen_list, uid_list, k_partitions=2)
+
+    assert len(partitions) == 2
+    for uid in set(uid_list):
+        uid_indices = [i for i, value in enumerate(uid_list) if value == uid]
+        assert any(all(i in partition for i in uid_indices) for partition in partitions), uid
+
+
 def test_group_balanced_partitions_single_sample_groups():
     """Test group balancing with single-sample groups (n=1)."""
     from verl.utils.seqlen_balancing import get_group_balanced_partitions
