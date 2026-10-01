@@ -35,8 +35,6 @@ CPUS_PER_TASK=288
 TRAIN_BATCH_SIZES=(32)
 ROLLOUT_BATCH_SIZES=(8)
 LRS=(1e-6)
-LAMBDAS=(0.0)
-CLIP_ADV_HIGHS=(null)
 DONTS_REPROMPT_ON_SELF_SUCCESSS=(True)
 
 # 0: forward KL, 0.5: Jensen-Shannon divergence, 1: reverse KL
@@ -105,7 +103,7 @@ for TRAIN_BATCH_SIZE in "${TRAIN_BATCH_SIZES[@]}"; do
                         for DATA_PATH in "${DATA_PATHS[@]}"; do
                             # 1. Construct the experiment name (must be unique)
                             MODEL_NAME=$(echo "$MODEL_PATH" | tr '/' '-')
-                            EXP_NAME="FINAL-SDPO-train${TRAIN_BATCH_SIZE}-alpha${ALPHA}-rollout${ROLLOUT_BATCH_SIZE}-lr${LR}-lambda${LAMBDA}-clip_adv_high${CLIP_ADV_HIGH}-dross${DONTS_REPROMPT_ON_SELF_SUCCESS}-${MODEL_NAME}"
+                            EXP_NAME="FINAL-SDPO-train${TRAIN_BATCH_SIZE}-alpha${ALPHA}-rollout${ROLLOUT_BATCH_SIZE}-lr${LR}-dross${DONTS_REPROMPT_ON_SELF_SUCCESS}-${MODEL_NAME}"
 
                             # 2. Construct the arguments string to pass to the training script
                             # Format: key=value key2=value2 ...
