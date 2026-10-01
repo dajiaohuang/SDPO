@@ -75,19 +75,11 @@ class RMDataset(Dataset):
         self._read_files_and_tokenize()
 
     def _download(self):
-        def _download_files():
-            from verl.utils.fs import copy, is_non_local
+        from verl.utils.fs import copy_to_local
 
-            os.makedirs(self.cache_dir, exist_ok=True)
-            assert os.path.exists(self.cache_dir)
-            for i, parquet_file in enumerate(self.parquet_files):
-                if is_non_local(parquet_file):
-                    dst = os.path.join(self.cache_dir, os.path.basename(parquet_file))
-                    if not os.path.exists(dst):
-                        copy(src=parquet_file, dst=dst)
-                    self.parquet_files[i] = dst
-
-        download_files_distributed(_download_files)
+        self.parquet_files = [
+            copy_to_local(parquet_file, cache_dir=self.cache_dir) for parquet_file in self.parquet_files
+        ]
 
     def _read_files_and_tokenize(self):
         dataframes = []
