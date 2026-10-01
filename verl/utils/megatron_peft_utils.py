@@ -98,10 +98,13 @@ def save_adapter_checkpoint(
     else:
         models = [model]
 
-    # Get adapter state from first model
-    adapter_state = get_adapter_state_dict(models[0])
+    # Virtual pipeline parallelism keeps a separate module per virtual stage.
+    # Keep the legacy single-dict format for one module, and store one state
+    # dict per virtual stage when there are multiple modules.
+    adapter_states = [get_adapter_state_dict(model) for model in models]
+    has_adapters = any(adapter_state for adapter_state in adapter_states)
 
-    if not adapter_state:
+    if not has_adapters:
         if rank == 0:
             print("Warning: No adapter parameters found to save")
         return
@@ -111,15 +114,17 @@ def save_adapter_checkpoint(
     rank_path = _get_rank_checkpoint_path(checkpoint_path)
     adapter_file = rank_path + "_adapter.pt"
 
-    torch.save(
-        {
-            "adapter_state_dict": adapter_state,
-        },
-        adapter_file,
-    )
+    if len(adapter_states) == 1:
+        checkpoint = {"adapter_state_dict": adapter_states[0]}
+        adapter_count = len(adapter_states[0])
+    else:
+        checkpoint = {"adapter_state_dicts": adapter_states}
+        adapter_count = sum(len(adapter_state) for adapter_state in adapter_states)
+
+    torch.save(checkpoint, adapter_file)
 
     if rank == 0:
-        print(f"Saved {len(adapter_state)} adapter parameters to {checkpoint_path} (distributed)")
+        print(f"Saved {adapter_count} adapter parameters to {checkpoint_path} (distributed)")
 
 
 def load_adapter_checkpoint(
@@ -148,21 +153,31 @@ def load_adapter_checkpoint(
     if not os.path.isfile(adapter_file):
         raise FileNotFoundError(f"Adapter checkpoint not found: {adapter_file}")
 
-    checkpoint = torch.load(adapter_file, map_location="cpu")
-    adapter_state = checkpoint.get("adapter_state_dict", {})
-
-    if not adapter_state:
-        print("Warning: No adapter parameters found in checkpoint")
-        return
-
     if isinstance(model, list):
         models = model
     else:
         models = [model]
 
+    checkpoint = torch.load(adapter_file, map_location="cpu")
+    adapter_states = checkpoint.get("adapter_state_dicts")
+    if adapter_states is None:
+        # Older checkpoints store a single dict. Preserve the historical
+        # behavior of applying it to each model when loading such checkpoints.
+        adapter_state = checkpoint.get("adapter_state_dict", {})
+        adapter_states = [adapter_state] * len(models) if isinstance(model, list) else [adapter_state]
+    elif len(adapter_states) != len(models):
+        raise ValueError(
+            f"Adapter checkpoint contains {len(adapter_states)} virtual pipeline states, "
+            f"but the model has {len(models)} chunks"
+        )
+
+    if not any(adapter_states):
+        print("Warning: No adapter parameters found in checkpoint")
+        return
+
     # Load adapter parameters into each model (for VPP, models may have multiple chunks)
     loaded_count = 0
-    for m in models:
+    for m, adapter_state in zip(models, adapter_states, strict=True):
         unwrapped = unwrap_model(m)
         if isinstance(unwrapped, list):
             unwrapped = unwrapped[0]
@@ -180,7 +195,7 @@ def load_adapter_checkpoint(
         and mpu.get_tensor_model_parallel_rank() == 0
         and mpu.get_pipeline_model_parallel_rank() == 0
     ):
-        print(f"Loaded {len(adapter_state)} adapter parameters from {checkpoint_path}")
+        print(f"Loaded {loaded_count} adapter parameters from {checkpoint_path}")
 
 
 def count_adapter_parameters(model):
