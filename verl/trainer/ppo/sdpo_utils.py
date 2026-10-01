@@ -11,3 +11,9 @@ def should_skip_empty_sdpo_update(batch, actor_config) -> bool:
 
     valid_target_tokens = batch.batch["response_mask"] * batch.batch["self_distillation_mask"].unsqueeze(-1)
     return not bool(valid_target_tokens.any().item())
+
+
+def validate_sdpo_strategy(strategy: str, self_distillation_enabled: bool) -> None:
+    """Reject actor backends without the SDPO loss and teacher integration."""
+    if self_distillation_enabled and strategy == "megatron":
+        raise ValueError("SDPO is not implemented for the Megatron actor strategy; use FSDP or FSDP2.")

@@ -26,6 +26,7 @@ from verl.experimental.dataset.sampler import AbstractSampler
 from verl.trainer.constants_ppo import get_ppo_ray_runtime_env
 from verl.trainer.ppo.ray_trainer import RayPPOTrainer
 from verl.trainer.ppo.reward import load_reward_manager
+from verl.trainer.ppo.sdpo_utils import validate_sdpo_strategy
 from verl.trainer.ppo.utils import need_critic, need_reference_policy
 from verl.utils.config import validate_config
 from verl.utils.device import auto_set_device, is_cuda_available
@@ -129,6 +130,7 @@ class TaskRunner:
         self_distillation_cfg = config.actor_rollout_ref.actor.get("self_distillation", None)
         loss_mode = config.actor_rollout_ref.actor.policy_loss.get("loss_mode", "vanilla")
         self_distillation_needs_ref = self_distillation_cfg is not None and loss_mode == "sdpo"
+        validate_sdpo_strategy(config.actor_rollout_ref.actor.strategy, self_distillation_needs_ref)
         if self_distillation_needs_ref and need_reference_policy(config):
             raise ValueError("SDPO cannot share the reference policy with KL regularization.")
         if self_distillation_needs_ref and use_legacy_worker_impl == "disable":

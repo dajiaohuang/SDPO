@@ -1,8 +1,9 @@
 from types import SimpleNamespace
 
+import pytest
 import torch
 
-from verl.trainer.ppo.sdpo_utils import should_skip_empty_sdpo_update
+from verl.trainer.ppo.sdpo_utils import should_skip_empty_sdpo_update, validate_sdpo_strategy
 
 
 def _actor_config(*, loss_mode="sdpo", entropy_coeff=0, use_kl_loss=False):
@@ -41,3 +42,14 @@ def test_other_actor_objectives_keep_update_for_empty_sdpo_targets():
     assert not should_skip_empty_sdpo_update(batch, _actor_config(entropy_coeff=0.01))
     assert not should_skip_empty_sdpo_update(batch, _actor_config(use_kl_loss=True))
     assert not should_skip_empty_sdpo_update(batch, _actor_config(loss_mode="vanilla"))
+
+
+def test_megatron_sdpo_fails_with_a_supported_backend_message():
+    with pytest.raises(ValueError, match="not implemented for the Megatron actor strategy"):
+        validate_sdpo_strategy("megatron", self_distillation_enabled=True)
+
+
+def test_supported_sdpo_backends_and_non_sdpo_megatron_pass_validation():
+    validate_sdpo_strategy("fsdp", self_distillation_enabled=True)
+    validate_sdpo_strategy("fsdp2", self_distillation_enabled=True)
+    validate_sdpo_strategy("megatron", self_distillation_enabled=False)
