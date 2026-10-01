@@ -21,15 +21,11 @@ This is the standard approach for local workstations (e.g., RTX 5090).
 pip install torch==2.5.1 torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 ```
 
-**2. Install SDPO and Dependences:**
+**2. Install SDPO and Dependencies:**
 From the root of the repository:
 ```bash
-# Install dependencies
-# Option 1: Stable pinned versions matching the cluster stack (Recommended)
-pip install -r requirements-stable.txt
-
-# Option 2: Latest compatible versions
-# pip install -r requirements.txt
+# Install the repository dependencies
+pip install -r requirements.txt
 
 # Install SDPO (verl) in editable mode
 pip install -e .
