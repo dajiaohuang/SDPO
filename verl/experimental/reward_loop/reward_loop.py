@@ -262,40 +262,51 @@ class RewardLoopManager:
 
     # this func is used to replace the legacy fsdp/megatron RewardModelWorker.compute_rm_score
     def compute_rm_score(self, data: DataProto) -> DataProto:
-        if self.reward_model_manager is not None:
-            self.reward_model_manager.wake_up()
+        manager = self.reward_model_manager
+        wake_started = manager is not None
+        try:
+            if manager is not None:
+                manager.wake_up()
 
-        chunks = data.chunk(len(self.reward_loop_workers))
-        outputs = ray.get(
-            [
-                worker.compute_score_batch.remote(chunk)
-                for worker, chunk in zip(self.reward_loop_workers, chunks, strict=True)
-            ]
-        )
-        outputs_flat = [item for sublist in outputs for item in sublist]
+            chunks = data.chunk(len(self.reward_loop_workers))
+            outputs = ray.get(
+                [
+                    worker.compute_score_batch.remote(chunk)
+                    for worker, chunk in zip(self.reward_loop_workers, chunks, strict=True)
+                ]
+            )
+            outputs_flat = [item for sublist in outputs for item in sublist]
 
-        # compute rm score
-        scores = [item["reward_score"] for item in outputs_flat]
-        prompt_length = data.batch["prompts"].size(1)
-        valid_response_length = data.batch["attention_mask"][:, prompt_length:].sum(dim=1)
-        rm_scores = torch.zeros_like(data.batch["responses"], dtype=torch.float32)
-        rm_scores[torch.arange(rm_scores.size(0)), valid_response_length - 1] = torch.tensor(
-            scores, dtype=torch.float32
-        )
-        batch = TensorDict({"rm_scores": rm_scores}, batch_size=len(data))
+            # compute rm score
+            scores = [item["reward_score"] for item in outputs_flat]
+            prompt_length = data.batch["prompts"].size(1)
+            valid_response_length = data.batch["attention_mask"][:, prompt_length:].sum(dim=1)
+            rm_scores = torch.zeros_like(data.batch["responses"], dtype=torch.float32)
+            rm_scores[torch.arange(rm_scores.size(0)), valid_response_length - 1] = torch.tensor(
+                scores, dtype=torch.float32
+            )
+            batch = TensorDict({"rm_scores": rm_scores}, batch_size=len(data))
 
-        reward_extra_infos = [output.get("reward_extra_info", {}) for output in outputs_flat]
-        reward_extra_keys = list(reward_extra_infos[0].keys())
-        non_tensor_batch = {}
-        for key in reward_extra_keys:
-            non_tensor_batch[key] = np.array([info[key] for info in reward_extra_infos])
+            reward_extra_infos = [output.get("reward_extra_info", {}) for output in outputs_flat]
+            reward_extra_keys = list(reward_extra_infos[0].keys())
+            non_tensor_batch = {}
+            for key in reward_extra_keys:
+                non_tensor_batch[key] = np.array([info[key] for info in reward_extra_infos])
 
-        if self.reward_model_manager is not None:
-            self.reward_model_manager.sleep()
+            result = DataProto(
+                batch=batch, non_tensor_batch=non_tensor_batch, meta_info={"reward_extra_keys": reward_extra_keys}
+            )
+        except BaseException:
+            if wake_started:
+                try:
+                    manager.sleep()
+                except Exception:
+                    logger.exception("Failed to sleep reward model after reward computation error")
+            raise
 
-        return DataProto(
-            batch=batch, non_tensor_batch=non_tensor_batch, meta_info={"reward_extra_keys": reward_extra_keys}
-        )
+        if manager is not None:
+            manager.sleep()
+        return result
 
     def _run_all(self, tasks: list[asyncio.Task]):
         async def run_all():
