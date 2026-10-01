@@ -126,8 +126,8 @@ class RewardLoopWorker:
         last_exception = None
         for attempt in range(max_retries):
             try:
-                # It's safer to have a timeout instead of None, which can hang indefinitely.
-                timeout = aiohttp.ClientTimeout(total=None)
+                # Keep a finite request deadline so the retry loop can recover from a stalled router.
+                timeout = aiohttp.ClientTimeout(total=300)
                 async with aiohttp.ClientSession(timeout=timeout) as session:
                     async with session.post(url, json=payload) as resp:
                         resp.raise_for_status()
