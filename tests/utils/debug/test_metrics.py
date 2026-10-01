@@ -43,6 +43,26 @@ class TestMetrics(unittest.TestCase):
         print(metrics)
         assert metrics["training/rollout_probs_diff_valid"] == 1
 
+    def test_calculate_debug_metrics_with_empty_response_mask(self):
+        data = DataProto.from_dict(
+            {
+                "rollout_log_probs": torch.zeros((2, 3)),
+                "old_log_probs": torch.zeros((2, 3)),
+                "response_mask": torch.zeros((2, 3), dtype=torch.long),
+                "responses": torch.zeros((2, 1), dtype=torch.long),
+            }
+        )
+
+        metrics = calculate_debug_metrics(data)
+
+        assert metrics == {
+            "training/rollout_probs_diff_valid": 0,
+            "training/rollout_probs_diff_max": 0.0,
+            "training/rollout_probs_diff_mean": 0.0,
+            "training/rollout_probs_diff_std": 0.0,
+            "training/rollout_actor_probs_pearson_corr": 0.0,
+        }
+
 
 if __name__ == "__main__":
     unittest.main()

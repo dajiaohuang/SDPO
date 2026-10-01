@@ -94,6 +94,15 @@ def calculate_debug_metrics(data: DataProto) -> dict:
     response_length = responses.size(1)
 
     response_mask = log_prob_mask[:, -response_length:]
+    if not response_mask.bool().any():
+        return {
+            "training/rollout_probs_diff_valid": 0,
+            "training/rollout_probs_diff_max": 0.0,
+            "training/rollout_probs_diff_mean": 0.0,
+            "training/rollout_probs_diff_std": 0.0,
+            "training/rollout_actor_probs_pearson_corr": 0.0,
+        }
+
     # calculate pearson corrcoef
     actor_probs = torch.exp(actor_old_log_probs)
     rollout_probs = torch.exp(rollout_old_log_probs)
