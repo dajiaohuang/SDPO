@@ -229,7 +229,7 @@ class MultiTurnSFTDataset(Dataset):
         Returns:
             messages: List of messages with replaced placeholder.
         """
-        messages: list = example[self.messages_key]
+        messages: list = [dict(message) for message in example[self.messages_key]]
         images = example[self.image_key] if self.image_key in example else []
         videos = example[self.video_key] if self.video_key in example else []
 

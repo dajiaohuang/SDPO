@@ -24,6 +24,7 @@ def process_image(image: dict | Image.Image, image_patch_size: int = 14) -> Imag
     if isinstance(image, Image.Image):
         return image.convert("RGB")
 
+    image = dict(image)
     if "bytes" in image:
         assert "image" not in image, "Cannot have both `bytes` and `image`"
         image["image"] = Image.open(BytesIO(image["bytes"]))
