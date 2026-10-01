@@ -65,7 +65,7 @@ class WeatherInteraction(BaseInteraction):
             should_terminate_sequence = True
         else:
             response = "Please use the weather tool to get the weather information."
-            should_terminate_sequence = True
+            should_terminate_sequence = False
         return should_terminate_sequence, response, reward, {}
 
     async def calculate_score(self, instance_id: str, **kwargs) -> float:
