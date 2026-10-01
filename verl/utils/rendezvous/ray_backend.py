@@ -71,3 +71,4 @@ def create_nccl_communicator_in_ray(
                 return communicator
             logging.info("failed to get nccl_id for %d time, sleep for %d seconds", i + 1, interval_s)
             time.sleep(interval_s)
+        raise TimeoutError(f"Timed out waiting for NCCL ID store {group_name!r} after {max_retries} attempts")
