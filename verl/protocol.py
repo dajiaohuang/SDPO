@@ -1089,7 +1089,8 @@ class DataProto:
         if self.batch is not None:
             # Interleave the data
             repeated_tensors = {
-                key: tensor.repeat_interleave(repeat_times, dim=0) for key, tensor in self.batch.items()
+                key: tensor.repeat_interleave(repeat_times.to(tensor.device), dim=0)
+                for key, tensor in self.batch.items()
             }
 
             repeated_batch = TensorDict(
@@ -1102,7 +1103,7 @@ class DataProto:
 
         repeated_non_tensor_batch = {}
         for key, val in self.non_tensor_batch.items():
-            repeated_non_tensor_batch[key] = np.repeat(val, repeat_times, axis=0)
+            repeated_non_tensor_batch[key] = np.repeat(val, repeat_times.tolist(), axis=0)
 
         return type(self)(
             batch=repeated_batch,

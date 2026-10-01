@@ -639,6 +639,19 @@ def test_sample_level_repeat():
     assert repeated_data_no_interleave.meta_info == {"info": "test_info"}
 
 
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required to test CUDA sample repeats")
+def test_sample_level_repeat_with_cuda_counts():
+    data = DataProto.from_dict(
+        tensors={"obs": torch.tensor([[1], [2], [3]], device="cuda")},
+        non_tensors={"labels": ["a", "b", "c"]},
+    )
+
+    repeated = data.sample_level_repeat(torch.tensor([1, 2, 3], device="cuda"))
+
+    assert torch.equal(repeated.batch["obs"], torch.tensor([[1], [2], [2], [3], [3], [3]], device="cuda"))
+    assert np.array_equal(repeated.non_tensor_batch["labels"], np.array(["a", "b", "b", "c", "c", "c"]))
+
+
 def test_dataproto_unfold_column_chunks():
     obs1 = torch.tensor([[1, 2, 3, 4], [5, 6, 7, 8], [9, 10, 11, 12]])
     obs2 = torch.tensor([[1, 2], [5, 6], [9, 10]])
