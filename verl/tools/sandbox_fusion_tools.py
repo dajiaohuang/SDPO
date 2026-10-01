@@ -74,6 +74,9 @@ class ExecutionWorker:
         return True
 
     def execute(self, fn: Callable[..., T], *fn_args, **fn_kwargs) -> T:
+        if self.rate_limit_worker is None:
+            return fn(*fn_args, **fn_kwargs)
+
         with ExitStack() as stack:
             stack.callback(self.rate_limit_worker.release.remote)
             ray.get(self.rate_limit_worker.acquire.remote())
