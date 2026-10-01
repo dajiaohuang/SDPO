@@ -705,6 +705,16 @@ def test_dataproto_unfold_column_chunks():
     assert ret.meta_info == {"name": "abc"}
 
 
+def test_dataproto_unfold_column_chunks_without_split_keys():
+    obs = torch.tensor([[1, 2], [3, 4]])
+    data = DataProto.from_dict(tensors={"obs": obs}, non_tensors={"labels": ["a", "b"]})
+
+    result = data.unfold_column_chunks(2)
+
+    assert torch.equal(result.batch["obs"], torch.tensor([[1, 2], [1, 2], [3, 4], [3, 4]]))
+    assert np.array_equal(result.non_tensor_batch["labels"], np.array(["a", "a", "b", "b"]))
+
+
 def test_dataproto_chunk_after_index():
     data_len = 4
     obs = torch.randn(data_len, 4)
