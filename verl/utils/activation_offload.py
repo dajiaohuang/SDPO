@@ -33,7 +33,15 @@ logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
 
 
 def _get_unique_tensor_key(tensor):
-    key = (tensor.untyped_storage().data_ptr() + tensor.storage_offset(), tensor.dtype)
+    # Views sharing a storage offset are only interchangeable when they expose
+    # the same logical elements. Otherwise the first view's offload buffer may
+    # be too small or contain a different layout for a later view.
+    key = (
+        tensor.untyped_storage().data_ptr() + tensor.storage_offset(),
+        tensor.dtype,
+        tuple(tensor.size()),
+        tuple(tensor.stride()),
+    )
     return key
 
 
