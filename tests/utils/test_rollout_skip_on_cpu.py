@@ -92,6 +92,23 @@ class TestRolloutSkip:
         captured = capsys.readouterr()
         assert "Successfully patched" in captured.out
 
+    def test_wrap_generate_sequences_preserves_patch_error(self, tmp_path):
+        config = MagicMock()
+        config.actor_rollout_ref.rollout = {"skip_dump_dir": str(tmp_path)}
+        config.data = {}
+
+        class ReadOnlyRolloutWorker:
+            @property
+            def generate_sequences(self):
+                return lambda batch, **kwargs: batch
+
+        skip = RolloutSkip(config, ReadOnlyRolloutWorker())
+
+        with pytest.raises(RuntimeError, match=r"\[RolloutSkip\(\)\].*Failed to patch") as exc_info:
+            skip.wrap_generate_sequences()
+
+        assert isinstance(exc_info.value.__cause__, AttributeError)
+
     def test_generate_without_wrap(self, mock_rollout_wg):
         """Test that generate_sequences works without wrapping"""
 

@@ -73,8 +73,7 @@ class RolloutSkip:
             )
         except Exception as e:
             raise RuntimeError(
-                "{self.print_mark} Failed to patch `actor_rollout_wg.generate_sequences()`",
-                flush=True,
+                f"{self.print_mark} Failed to patch `actor_rollout_wg.generate_sequences()`"
             ) from e
 
     def try_load(self):
