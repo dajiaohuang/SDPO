@@ -20,6 +20,7 @@ import pytest
 import torch
 
 import verl.trainer.ppo.core_algos
+from verl.protocol import DataProto
 from verl.trainer.ppo.core_algos import (
     compute_gae_advantage_return,
     compute_grpo_outcome_advantage,
@@ -217,6 +218,22 @@ def _rand_mask(batch_size: int, seq_len: int) -> torch.Tensor:
     if len(rows_without_one) > 0:
         mask[rows_without_one, -1] = 1.0
     return mask
+
+
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="CUDA is required to test CUDA resampling")
+def test_pf_ppo_reweight_with_cuda_batch():
+    scores = torch.tensor([[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]], device="cuda")
+    data = DataProto.from_dict(
+        tensors={"token_level_scores": scores},
+        non_tensors={"sample_id": np.array([1, 2, 3])},
+        meta_info={"sample_id": [1, 2, 3]},
+    )
+
+    resampled = verl.trainer.ppo.core_algos.compute_pf_ppo_reweight_data(data, reweight_method="pow", weight_pow=1.0)
+
+    resampled_ids = resampled.batch["token_level_scores"][:, 0].long().cpu().numpy()
+    assert np.array_equal(resampled.non_tensor_batch["sample_id"], resampled_ids)
+    assert resampled.meta_info["sample_id"] == resampled_ids.tolist()
 
 
 @pytest.mark.parametrize(
