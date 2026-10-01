@@ -1812,7 +1812,8 @@ def compute_policy_loss_geo_mean(
         )
         pg_losses = pg_losses * seq_is_weights
 
-    pg_loss = torch.mean(pg_losses)
+    valid_sequences = (response_mask_sum > 0).to(pg_losses.dtype)
+    pg_loss = (pg_losses * valid_sequences).sum() / valid_sequences.sum().clamp_min(1.0)
 
     # higher: ratio is too large that need clamp to clip_high (when adv > 0)
     clipped = torch.ne(negative_approx_kl, negative_approx_kl_clamp)
