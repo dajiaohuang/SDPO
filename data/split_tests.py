@@ -34,6 +34,7 @@ def main(data_path, output_dir):
     np.random.seed(0)
 
     ds_train = datasets.load_dataset("json", data_files=data_path, split="train")
+    os.makedirs(output_dir, exist_ok=True)
 
     # Save full dataset as test.json
     test_file = os.path.join(output_dir, "test.json")
