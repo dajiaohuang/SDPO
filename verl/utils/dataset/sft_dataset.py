@@ -176,7 +176,7 @@ class SFTDataset(Dataset):
             attention_mask = torch.cat((attention_mask, padded_attention_mask))
         elif sequence_length > self.max_length:
             if self.truncation == "left":
-                # actually, left truncation may not be reasonable
+                prompt_length = max(0, prompt_length - (sequence_length - self.max_length))
                 input_ids = input_ids[-self.max_length :]
                 attention_mask = attention_mask[-self.max_length :]
             elif self.truncation == "right":

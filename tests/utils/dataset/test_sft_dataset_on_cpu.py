@@ -95,3 +95,31 @@ def test_sft_dataset_with_max_samples():
     )
 
     assert len(dataset) == 5
+
+
+def test_left_truncation_preserves_response_loss_tokens():
+    import torch
+
+    class FixedTokenizer:
+        eos_token = "<eos>"
+        pad_token_id = 0
+
+        def apply_chat_template(self, *args, **kwargs):
+            return "prompt"
+
+        def __call__(self, text, **kwargs):
+            ids = [11, 12, 13, 14, 15, 16] if text == "prompt" else [21, 22, 23]
+            return {"input_ids": torch.tensor([ids]), "attention_mask": torch.ones((1, len(ids)), dtype=torch.long)}
+
+    dataset = object.__new__(SFTDataset)
+    dataset.tokenizer = FixedTokenizer()
+    dataset.prompts = ["question"]
+    dataset.responses = ["answer"]
+    dataset.max_length = 7
+    dataset.truncation = "left"
+    dataset.apply_chat_template_kwargs = {}
+
+    item = dataset[0]
+
+    assert item["input_ids"].tolist() == [13, 14, 15, 16, 21, 22, 23]
+    assert item["loss_mask"].tolist() == [0, 0, 0, 1, 1, 1, 0]
