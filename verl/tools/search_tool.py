@@ -94,8 +94,8 @@ class SearchExecutionWorker:
                 try:
                     return fn(*fn_args, **fn_kwargs)
                 except Exception as e:
-                    # TODO we should make this available to the tool caller
                     logger.warning(f"Error when executing search: {e}")
+                    raise
         else:
             return fn(*fn_args, **fn_kwargs)
 
