@@ -137,3 +137,40 @@ class TestCheckpointCleanupLogic:
         manager.register_checkpoint(ckpt_300, 1)
         assert not os.path.exists(ckpt_200)
         assert manager.previous_saved_paths == [ckpt_300]
+
+    def test_del_local_after_load_removes_hdfs_cache_file(self, monkeypatch, tmp_path):
+        """Remove the local cache copy based on the original HDFS source path."""
+        from contextlib import nullcontext
+        from unittest.mock import Mock
+
+        import torch
+
+        try:
+            from verl.utils.checkpoint import fsdp_checkpoint_manager as fsdp
+        except (ImportError, ModuleNotFoundError) as e:
+            pytest.skip(f"FSDP checkpoint dependencies are unavailable: {e}")
+
+        manager = fsdp.FSDPCheckpointManager.__new__(fsdp.FSDPCheckpointManager)
+        manager.checkpoint_load_contents = ["model"]
+        manager.model = Mock()
+        manager.optimizer = None
+        manager.lr_scheduler = None
+        manager.rank = 0
+        manager.world_size = 1
+
+        local_copy = tmp_path / "model_shard.pt"
+
+        def copy_to_local(remote_path):
+            local_copy.write_bytes(b"checkpoint")
+            return str(local_copy)
+
+        monkeypatch.setattr(fsdp, "copy_to_local", copy_to_local)
+        monkeypatch.setattr(fsdp, "get_fsdp_state_ctx", lambda *args, **kwargs: nullcontext())
+        monkeypatch.setattr(fsdp, "ShardedStateDictConfig", lambda **kwargs: object())
+        monkeypatch.setattr(torch, "load", lambda *args, **kwargs: {"model": "state"})
+        monkeypatch.setattr(torch.distributed, "barrier", lambda: None)
+
+        manager.load_checkpoint("hdfs://checkpoint/global_step_1", del_local_after_load=True)
+
+        assert not local_copy.exists()
+        manager.model.load_state_dict.assert_called_once_with({"model": "state"})

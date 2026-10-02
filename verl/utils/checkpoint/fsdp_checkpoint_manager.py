@@ -130,10 +130,12 @@ class FSDPCheckpointManager(BaseCheckpointManager):
             if self.should_load_optimizer
             else None
         )
+        local_checkpoint_files = []
         with get_fsdp_state_ctx(self.model, StateDictType.SHARDED_STATE_DICT, state_dict_cfg, optim_cfg):
             if self.should_load_model:
                 remote_model_path = os.path.join(local_path, f"model_world_size_{self.world_size}_rank_{self.rank}.pt")
                 local_model_path = copy_to_local(remote_model_path)
+                local_checkpoint_files.append((remote_model_path, local_model_path))
                 model_state_dict = torch.load(local_model_path, weights_only=False)
                 self.model.load_state_dict(model_state_dict)
                 log_with_rank(f"Loaded model from {remote_model_path}", rank=self.rank, logger=logger)
@@ -141,6 +143,7 @@ class FSDPCheckpointManager(BaseCheckpointManager):
             if self.should_load_optimizer:
                 remote_optim_path = os.path.join(local_path, f"optim_world_size_{self.world_size}_rank_{self.rank}.pt")
                 local_optim_path = copy_to_local(remote_optim_path)
+                local_checkpoint_files.append((remote_optim_path, local_optim_path))
                 optimizer_state_dict = torch.load(local_optim_path, weights_only=False)
                 self.optimizer.load_state_dict(optimizer_state_dict)
                 log_with_rank(f"Loaded optimizer from {remote_optim_path}", rank=self.rank, logger=logger)
@@ -150,6 +153,7 @@ class FSDPCheckpointManager(BaseCheckpointManager):
                 local_path, f"extra_state_world_size_{self.world_size}_rank_{self.rank}.pt"
             )
             local_extra_state_path = copy_to_local(remote_extra_state_path)
+            local_checkpoint_files.append((remote_extra_state_path, local_extra_state_path))
             extra_state_dict = torch.load(local_extra_state_path, weights_only=False)
             # recover random state
             if "rng" in extra_state_dict:
@@ -162,17 +166,18 @@ class FSDPCheckpointManager(BaseCheckpointManager):
                 self.lr_scheduler.load_state_dict(lr_scheduler_state_dict)
                 log_with_rank(f"Loaded lr_scheduler from {remote_extra_state_path}", rank=self.rank, logger=logger)
 
-        if self.rank == 0 and del_local_after_load:
-            try:
-                os.remove(local_model_path) if is_non_local(local_model_path) else None
-                os.remove(local_optim_path) if is_non_local(local_optim_path) else None
-                os.remove(local_extra_state_path) if is_non_local(local_extra_state_path) else None
-            except Exception as e:
-                log_with_rank(
-                    f"remove local resume ckpt file after loading failed, exception {e} will be ignored",
-                    rank=self.rank,
-                    logger=logger,
-                )
+        if del_local_after_load:
+            for remote_path, local_path in local_checkpoint_files:
+                if is_non_local(remote_path):
+                    try:
+                        os.remove(local_path)
+                    except Exception as e:
+                        log_with_rank(
+                            f"remove local resume ckpt file {local_path} after loading failed, "
+                            f"exception {e} will be ignored",
+                            rank=self.rank,
+                            logger=logger,
+                        )
 
         # wait for everyone to load checkpoints
         torch.distributed.barrier()
