@@ -28,14 +28,6 @@ _MODELS = {
         "qwen2",
         ("ParallelQwen2ForCausalLMRmPadPP", "ParallelQwen2ForValueRmPadPP", "ParallelQwen2ForCausalLMRmPad"),
     ),
-    "MistralForCausalLM": (
-        "mistral",
-        ("ParallelMistralForCausalLMRmPadPP", "ParallelMistralForValueRmPadPP", "ParallelMistralForCausalLMRmPad"),
-    ),
-    "ApertusForCausalLM": (
-        "apertus",
-        ("ParallelApertusForCausalLMRmPadPP", "ParallelApertusForValueRmPadPP", "ParallelApertusForCausalLMRmPad"),
-    ),
 }
 
 
