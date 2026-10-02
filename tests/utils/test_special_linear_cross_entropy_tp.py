@@ -48,10 +48,10 @@ import verl.utils.torch_functional as verl_F
 
 compute_entropy_from_logits = torch.compile(verl_F.entropy_from_logits, dynamic=True)
 
-MAX_TEST_CASES = os.environ.get("MAX_TEST_CASES", 5)
-VERIFY_TORCH_SELF = os.environ.get("VERIFY_TORCH_SELF", False)
-LOW_MEMORY = os.environ.get("LOW_MEMORY", False)
-LOW_MEMORY_DIV_FACTOR = os.environ.get("LOW_MEMORY_DIV_FACTOR", 16)
+MAX_TEST_CASES = int(os.environ.get("MAX_TEST_CASES", 5))
+VERIFY_TORCH_SELF = os.environ.get("VERIFY_TORCH_SELF", "0").lower() in {"1", "true", "yes"}
+LOW_MEMORY = os.environ.get("LOW_MEMORY", "0").lower() in {"1", "true", "yes"}
+LOW_MEMORY_DIV_FACTOR = int(os.environ.get("LOW_MEMORY_DIV_FACTOR", 16))
 
 
 def run_torch_entropy(

@@ -42,7 +42,7 @@ compute_entropy_from_logits = torch.compile(verl_F.entropy_from_logits, dynamic=
 fused_linear_for_ppo = FusedLinearForPPO()
 fused_linear_for_ppo.compile(dynamic=True)
 
-MAX_TEST_CASES = os.environ.get("MAX_TEST_CASES", 5)
+MAX_TEST_CASES = int(os.environ.get("MAX_TEST_CASES", 5))
 
 
 def run_torch_entropy(
