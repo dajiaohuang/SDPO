@@ -323,7 +323,7 @@ class EngineEvalModeCtx(BaseEngineCtx):
         assert isinstance(self.engine, VeOmniEngine)
         super().__enter__()
         self.engine.ulysses_sharding_manager.__enter__()
-        self.engine.module.train()
+        self.engine.module.eval()
 
     def __exit__(self, exc_type, exc_value, traceback):
         assert isinstance(self.engine, VeOmniEngine)
