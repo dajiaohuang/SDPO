@@ -331,18 +331,12 @@ def merge_megatron_ckpt_gptmodel(wrapped_models, config, dtype, is_value_model=F
                 kv_size_tp = hidden_size_per_head
                 total_size = q_size_tp + 2 * kv_size_tp
                 for i in range(tp_size):
-                    num_query_groups_per_partition = wrapped_models[0].config.num_query_groups // tp_size
                     qkv_part = full_tensor[i * total_size : (i + 1) * total_size]
-                    q_size_chunk = q_size_tp // num_query_groups_per_partition
-                    kv_size_chunk = kv_size_tp // num_query_groups_per_partition
-                    for qkv_part_chunk in qkv_part.chunk(num_query_groups_per_partition):
-                        q_part = qkv_part_chunk[:q_size_chunk]
-                        k_part = qkv_part_chunk[q_size_chunk : q_size_chunk + kv_size_chunk]
-                        v_part = qkv_part_chunk[q_size_chunk + kv_size_chunk :]
-                        q_weight_list.append(q_part)
-                        if i * config.num_key_value_heads % tp_size == 0:
-                            k_weight_list.append(k_part)
-                            v_weight_list.append(v_part)
+                    q_weight_list.append(qkv_part[:q_size_tp])
+                    if i * config.num_key_value_heads % tp_size == 0:
+                        k_start = q_size_tp
+                        k_weight_list.append(qkv_part[k_start : k_start + kv_size_tp])
+                        v_weight_list.append(qkv_part[k_start + kv_size_tp :])
 
             state_dict[q_name] = torch.cat(q_weight_list, dim=0)
             state_dict[k_name] = torch.cat(k_weight_list, dim=0)

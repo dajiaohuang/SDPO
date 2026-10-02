@@ -338,14 +338,7 @@ def load_state_dict_to_megatron_gptmodel(state_dict, wrapped_models, config, par
                     k_part = full_weight_k[start_idx:end_idx]
                     v_part = full_weight_v[start_idx:end_idx]
                     new_weight_qkv_this_tp = new_weight_qkv[i * total_size : (i + 1) * total_size]
-                    q_part_per_head = torch.chunk(q_part, config.num_attention_heads, dim=0)
-                    k_part_per_head = torch.chunk(k_part, config.num_attention_heads, dim=0)
-                    v_part_per_head = torch.chunk(v_part, config.num_attention_heads, dim=0)
-                    total_size_per_head = total_size // config.num_attention_heads
-                    for j in range(config.num_attention_heads):
-                        new_weight_qkv_this_tp[j * total_size_per_head : (j + 1) * total_size_per_head].copy_(
-                            torch.cat([q_part_per_head[j], k_part_per_head[j], v_part_per_head[j]], dim=0)
-                        )
+                    new_weight_qkv_this_tp.copy_(torch.cat([q_part, k_part, v_part], dim=0))
 
             tensor_chunk = torch.chunk(new_weight_qkv, tp_size, dim=0)
             chunk_shape = tensor_chunk[0].shape

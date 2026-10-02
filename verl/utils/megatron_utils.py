@@ -663,18 +663,14 @@ def convert_megatron_model_to_transformers_model(
             kv_size_tp = hidden_size_per_head
             total_size = q_size_tp + 2 * kv_size_tp
             for i in range(tp_size):
-                num_query_groups_per_partition = num_query_groups // tp_size
                 qkv_part = full_tensor[i * total_size : (i + 1) * total_size]
-                q_size_chunk = q_size_tp // num_query_groups_per_partition
-                kv_size_chunk = kv_size_tp // num_query_groups_per_partition
-                for qkv_part_chunk in qkv_part.chunk(num_query_groups_per_partition):
-                    q_part = qkv_part_chunk[:q_size_chunk]
-                    k_part = qkv_part_chunk[q_size_chunk : q_size_chunk + kv_size_chunk]
-                    v_part = qkv_part_chunk[q_size_chunk + kv_size_chunk :]
-                    q_shard_list.append(q_part)
-                    if i * config.num_key_value_heads % tp_size == 0:
-                        k_shard_list.append(k_part)
-                        v_shard_list.append(v_part)
+                q_part = qkv_part[:q_size_tp]
+                k_part = qkv_part[q_size_tp : q_size_tp + kv_size_tp]
+                v_part = qkv_part[q_size_tp + kv_size_tp :]
+                q_shard_list.append(q_part)
+                if i * config.num_key_value_heads % tp_size == 0:
+                    k_shard_list.append(k_part)
+                    v_shard_list.append(v_part)
 
         new_params[q_name] = torch.cat(q_shard_list, dim=0)
         new_params[k_name] = torch.cat(k_shard_list, dim=0)
@@ -858,23 +854,40 @@ def default_tp_concat_fn(
             num_key_value_heads = hf_config.vision_config.num_heads
         assert num_attention_heads % num_key_value_heads == 0
         num_q_per_kv = num_attention_heads // num_key_value_heads
-        assert infer_params[0].shape[0] % (num_q_per_kv + 2) == 0, (
-            f"param '{name}' shape '{infer_params[0].shape}' dim0 is not divisible by {num_q_per_kv + 2}"
-        )
-        kv_size_per_tp = infer_params[0].shape[0] // (num_q_per_kv + 2)
-        split_size = [kv_size_per_tp * num_q_per_kv, kv_size_per_tp, kv_size_per_tp]
-        for infer_param in infer_params:
-            num_query_groups_per_partition = num_key_value_heads // train_tp_size
-            for chunk in infer_param.chunk(num_query_groups_per_partition):
-                split_size = [
-                    kv_size_per_tp * num_q_per_kv // num_query_groups_per_partition,
-                    kv_size_per_tp // num_query_groups_per_partition,
-                    kv_size_per_tp // num_query_groups_per_partition,
-                ]
-                q, k, v = chunk.split(split_size)
-                q_lst.append(q)
-                k_lst.append(k)
-                v_lst.append(v)
+        if num_key_value_heads < train_tp_size:
+            # Each TP shard contains its local Q rows followed by one replicated KV group.
+            attention_config = getattr(hf_config, "vision_config", None) if "vision_model" in name else hf_config
+            head_dim = getattr(attention_config, "head_dim", None) or getattr(model_config, "kv_channels", None)
+            if head_dim is None:
+                hidden_size = getattr(attention_config, "hidden_size", model_config.hidden_size)
+                head_dim = hidden_size // num_attention_heads
+            q_size_tp = head_dim * num_attention_heads // train_tp_size
+            kv_size_tp = head_dim
+            for i, infer_param in enumerate(infer_params):
+                q_lst.append(infer_param[:q_size_tp])
+                k_part = infer_param[q_size_tp : q_size_tp + kv_size_tp]
+                v_part = infer_param[q_size_tp + kv_size_tp :]
+                if i * num_key_value_heads % train_tp_size == 0:
+                    k_lst.append(k_part)
+                    v_lst.append(v_part)
+        else:
+            assert infer_params[0].shape[0] % (num_q_per_kv + 2) == 0, (
+                f"param '{name}' shape '{infer_params[0].shape}' dim0 is not divisible by {num_q_per_kv + 2}"
+            )
+            kv_size_per_tp = infer_params[0].shape[0] // (num_q_per_kv + 2)
+            split_size = [kv_size_per_tp * num_q_per_kv, kv_size_per_tp, kv_size_per_tp]
+            for infer_param in infer_params:
+                num_query_groups_per_partition = num_key_value_heads // train_tp_size
+                for chunk in infer_param.chunk(num_query_groups_per_partition):
+                    split_size = [
+                        kv_size_per_tp * num_q_per_kv // num_query_groups_per_partition,
+                        kv_size_per_tp // num_query_groups_per_partition,
+                        kv_size_per_tp // num_query_groups_per_partition,
+                    ]
+                    q, k, v = chunk.split(split_size)
+                    q_lst.append(q)
+                    k_lst.append(k)
+                    v_lst.append(v)
         q = torch.cat(q_lst, dim=0)
         k = torch.cat(k_lst, dim=0)
         v = torch.cat(v_lst, dim=0)
