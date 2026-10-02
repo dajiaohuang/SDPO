@@ -72,7 +72,14 @@ class EnvLoop:
 
         loop = asyncio.get_event_loop()
         self.rollout_wg.switch_to_rollout()
-        output = loop.run_until_complete(self.run(prompts, reset_results))
+        try:
+            output = loop.run_until_complete(self.run(prompts, reset_results))
+        except BaseException:
+            try:
+                self.rollout_wg.switch_to_train()
+            except Exception:
+                logger.exception("Failed to restore VLA rollout workers to training mode after rollout failure")
+            raise
         self.rollout_wg.switch_to_train()
         # TODO(caiyunke.astra): add timing metrics
         return output
