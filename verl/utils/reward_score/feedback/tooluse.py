@@ -1,5 +1,5 @@
-import re
 import json
+import re
 from collections import Counter
 
 
@@ -11,16 +11,16 @@ def extract_actions(text: str) -> list[str]:
 
 def extract_action_inputs(text: str) -> dict:
     """Extract and merge all JSON blocks following 'Action Input:'."""
-    json_blocks = re.findall(r'Action Input:\s*({.*?})', text, re.DOTALL)
-    
     combined_dict = {}
-    for block in json_blocks:
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"Action Input:\s*", text):
         try:
-            parsed = json.loads(block)
-            combined_dict.update(parsed)
+            parsed, _ = decoder.raw_decode(text, match.end())
+            if isinstance(parsed, dict):
+                combined_dict.update(parsed)
         except json.JSONDecodeError:
             pass
-    
+
     return combined_dict
 
 
@@ -72,7 +72,10 @@ def compute_score(solution: str, ground_truth: str) -> dict:
     gt_action_inputs_list = []
     for item in gt_list:
         try:
-            parsed_input = json.loads(item['Action_Input']) if isinstance(item['Action_Input'], str) else item['Action_Input']
+            if isinstance(item['Action_Input'], str):
+                parsed_input = json.loads(item['Action_Input'])
+            else:
+                parsed_input = item['Action_Input']
             gt_action_inputs_list.append(parsed_input)
         except (json.JSONDecodeError, KeyError):
             gt_action_inputs_list.append({})
