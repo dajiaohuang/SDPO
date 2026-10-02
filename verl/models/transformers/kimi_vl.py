@@ -26,6 +26,7 @@ from verl.utils.transformers_compat import flash_attn_supports_top_left_mask
 from verl.utils.ulysses import (
     gather_heads_scatter_seq,
     gather_seq_scatter_heads,
+    get_ulysses_sequence_parallel_group,
     get_ulysses_sequence_parallel_world_size,
     validate_ulysses_config,
 )
@@ -133,6 +134,11 @@ def _ulysses_flash_attn_forward(
         k_pe = gather_seq_scatter_heads(k_pe, seq_dim=2, head_dim=1)
         k_nope = gather_seq_scatter_heads(k_nope, seq_dim=2, head_dim=1)
         value_states = gather_seq_scatter_heads(value_states, seq_dim=2, head_dim=1)
+        position_ids_list = [torch.empty_like(position_ids) for _ in range(ulysses_sp_size)]
+        torch.distributed.all_gather(
+            position_ids_list, position_ids, group=get_ulysses_sequence_parallel_group()
+        )
+        position_ids = torch.cat(position_ids_list, dim=-1)
         # (batch_size, num_head / sp_size, seq_length, head_size)
         full_q_len = q.size(2)  # full_q_len = seq_length
 
