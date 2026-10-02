@@ -231,6 +231,9 @@ class DenseRetriever(BaseRetriever):
         scores, idxs = self.index.search(query_emb, k=num)
         idxs = idxs[0]
         scores = scores[0]
+        valid = idxs >= 0
+        idxs = idxs[valid]
+        scores = scores[valid]
         results = load_docs(self.corpus, idxs)
         if return_score:
             return results, scores.tolist()
@@ -252,11 +255,14 @@ class DenseRetriever(BaseRetriever):
             batch_scores = batch_scores.tolist()
             batch_idxs = batch_idxs.tolist()
 
-            # load_docs is not vectorized, but is a python list approach
-            flat_idxs = sum(batch_idxs, [])
-            batch_results = load_docs(self.corpus, flat_idxs)
-            # chunk them back
-            batch_results = [batch_results[i * num : (i + 1) * num] for i in range(len(batch_idxs))]
+            # FAISS uses -1 for missing neighbors; Python would otherwise treat
+            # that as the final corpus row.
+            valid_batch = [
+                [(idx, score) for idx, score in zip(idxs, scores, strict=True) if idx >= 0]
+                for idxs, scores in zip(batch_idxs, batch_scores, strict=True)
+            ]
+            batch_results = [load_docs(self.corpus, [idx for idx, _ in row]) for row in valid_batch]
+            batch_scores = [[score for _, score in row] for row in valid_batch]
 
             results.extend(batch_results)
             scores.extend(batch_scores)
