@@ -23,7 +23,6 @@ RESUME_MODE=${RESUME_MODE:-disable}
 SAVE_FREQ=${SAVE_FREQ:-1}
 
 micro_bsz=2
-NUM_GPUS=8
 
 project_name="verl-test"
 exp_name="$(basename "${MODEL_ID,,}")-sft-minimal"
