@@ -13,10 +13,11 @@
 # limitations under the License.
 # Adapted from https://github.com/EleutherAI/lm-evaluation-harness/blob/main/lm_eval/tasks/hendrycks_math/utils.py
 
-import re
 import signal
 from typing import Optional
-from math_verify import parse as mv_parse, verify as mv_verify
+
+from math_verify import parse as mv_parse
+from math_verify import verify as mv_verify
 
 FORMAT_PENALTY = False
 
@@ -161,6 +162,9 @@ def compute_score(
     Returns:
         Reward score (1.0 for correct, 0 for incorrect)
     """
+    if extra_info is None:
+        extra_info = {}
+
     split = extra_info.get("split", "test")
     was_truncated = extra_info.get("truncated", False)
 
