@@ -59,7 +59,7 @@ def get_peft_cls(model_config, bridge, provider, dtype=None):
             lora_dtype=lora_dtype,
             exclude_modules=lora_cfg.get("exclude_modules", []),
         )
-    if lora_type == "vlm_lora":
+    elif lora_type == "vlm_lora":
         peft_cls = VLMLoRA(
             target_modules=lora_cfg.get("target_modules", ["linear_qkv", "linear_proj", "linear_fc1", "linear_fc2"]),
             dim=lora_cfg.get("rank"),
@@ -108,6 +108,9 @@ def get_peft_cls(model_config, bridge, provider, dtype=None):
             lora_B_init_method=lora_cfg.get("lora_B_init_method", "zero"),
             exclude_modules=lora_cfg.get("exclude_modules", []),
         )
+    else:
+        supported_types = "lora, vlm_lora, canonical_lora, dora"
+        raise ValueError(f"Unsupported Megatron LoRA type {lora_type!r}. Supported types: {supported_types}")
 
     print(
         f"Enabling {lora_type.upper()} with rank={lora_cfg.get('rank')}, "
