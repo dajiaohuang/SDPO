@@ -89,7 +89,6 @@ if __name__ == "__main__":
         local_save_dir = args.local_save_dir
 
     local_dir = os.path.expanduser(local_save_dir)
-    os.makedirs(local_dir, exist_ok=True)
     hdfs_dir = args.hdfs_dir
 
     train_dataset.to_parquet(os.path.join(local_dir, "train.parquet"))

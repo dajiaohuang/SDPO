@@ -121,7 +121,6 @@ def generate_rl_dataset(target_hdfs_path_dir, local_dir="~/data/full_hh_rlhf/rl"
 
     train_dataset = train_dataset.map(function=make_map_fn("train"), with_indices=True)
     local_dir = os.path.expanduser(local_dir)
-    os.makedirs(local_dir, exist_ok=True)
     local_path = os.path.join(local_dir, "train.parquet")
     train_dataset.to_parquet(local_path)
 
