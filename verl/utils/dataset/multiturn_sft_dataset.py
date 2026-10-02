@@ -16,6 +16,7 @@
 Multi-turn SFT dataset that supports training on conversation data with multiple turns
 """
 
+import json
 import logging
 import os
 import re
@@ -161,15 +162,19 @@ class MultiTurnSFTDataset(Dataset):
         # generation prompt: <|im_start|>assistant\n
         self.system_prompt, self.generation_prompt = self._get_prompt_template_tokens(None)
 
-    def _get_prompt_template_tokens(self, enable_thinking: Optional[bool]):
-        if enable_thinking not in self._prompt_template_cache:
+    def _get_prompt_template_tokens(
+        self, enable_thinking: Optional[bool], tools: Optional[list[dict[str, Any]]] = None
+    ):
+        tools_cache_key = json.dumps(tools, sort_keys=True, default=str) if tools is not None else None
+        cache_key = (enable_thinking, tools_cache_key)
+        if cache_key not in self._prompt_template_cache:
             kwargs = {**self.apply_chat_template_kwargs}
             if enable_thinking is not None:
                 kwargs["enable_thinking"] = enable_thinking
-            self._prompt_template_cache[enable_thinking] = extract_system_prompt_and_generation(
-                self.tokenizer, **kwargs
-            )
-        return self._prompt_template_cache[enable_thinking]
+            if tools is not None:
+                kwargs["tools"] = tools
+            self._prompt_template_cache[cache_key] = extract_system_prompt_and_generation(self.tokenizer, **kwargs)
+        return self._prompt_template_cache[cache_key]
 
     def __len__(self):
         return len(self.messages)
@@ -200,7 +205,7 @@ class MultiTurnSFTDataset(Dataset):
         if enable_thinking is not None:
             apply_chat_template_kwargs["enable_thinking"] = enable_thinking
 
-        system_prompt, generation_prompt = self._get_prompt_template_tokens(enable_thinking)
+        system_prompt, generation_prompt = self._get_prompt_template_tokens(enable_thinking, tools)
 
         inputs = processor.apply_chat_template(
             [message],
