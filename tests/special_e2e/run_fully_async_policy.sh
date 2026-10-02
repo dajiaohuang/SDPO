@@ -7,6 +7,13 @@ set -xeuo pipefail
 
 NUM_GPUS=${NUM_GPUS:-8}
 ACTOR_STRATEGY=${ACTOR_STRATEGY:-"fsdp2"}  # fsdp2 or megatron
+if ! [[ "$NUM_GPUS" =~ ^[1-9][0-9]*$ ]] || [ "$NUM_GPUS" -lt 2 ]; then
+    echo "Error: NUM_GPUS must be an integer of at least 2" >&2
+    exit 1
+fi
+
+n_gpus_rollout=$((NUM_GPUS / 2))
+n_gpus_training=$((NUM_GPUS - n_gpus_rollout))
 
 # Download model if not exists
 MODEL_ID=${MODEL_ID:-Qwen/Qwen2.5-0.5B-Instruct}
@@ -49,9 +56,6 @@ top_k=-1
 val_top_p=0.7
 
 # Fully async specific parameters
-n_gpus_rollout=4
-n_gpus_training=4
-
 train_prompt_bsz=0
 gen_prompt_bsz=1
 n_resp_per_prompt=16
