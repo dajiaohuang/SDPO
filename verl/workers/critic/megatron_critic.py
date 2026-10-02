@@ -18,7 +18,7 @@ Implement a multiprocess PPOCritic
 import itertools
 import logging
 import os
-from functools import partial
+from functools import partial, wraps
 from typing import Iterable
 
 import torch
@@ -41,6 +41,19 @@ from verl.workers.critic import BasePPOCritic
 
 logger = logging.getLogger(__file__)
 logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
+
+
+def _restore_critic_modes_on_exit(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        prev_modes = [module.training for module in self.critic_module]
+        try:
+            return func(self, *args, **kwargs)
+        finally:
+            for module, mode in zip(self.critic_module, prev_modes, strict=False):
+                module.train(mode)
+
+    return wrapper
 
 
 class MegatronPPOCritic(BasePPOCritic):
@@ -86,8 +99,8 @@ class MegatronPPOCritic(BasePPOCritic):
         self.config = config
 
     @GPUMemoryLogger("megatron critic", logger=logger)
+    @_restore_critic_modes_on_exit
     def compute_values(self, data: DataProto) -> DataProto:
-        prev_modes = [m.training for m in self.critic_module]
         for module in self.critic_module:
             module.eval()
         responses = data.batch["responses"]
@@ -142,8 +155,6 @@ class MegatronPPOCritic(BasePPOCritic):
         # add empty cache after each compute
         get_torch_device().empty_cache()
 
-        for module, mode in zip(self.critic_module, prev_modes, strict=False):
-            module.train(mode)
         return values
 
     def make_minibatch_iterator(self, data: DataProto) -> Iterable[DataProto]:
