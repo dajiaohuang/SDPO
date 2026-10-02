@@ -243,12 +243,17 @@ def patch_forward_with_backends(
         use_fused_kernels (bool): Whether to use fused kernels.
         fused_kernels_backend (str): The backend to use for fused kernels.
     """
-    if not use_fused_kernels or fused_kernels_backend not in ["triton", "torch"]:
+    if not use_fused_kernels:
         print(
             f"Skipping monkey patch for {model.__class__.__name__} as use_fused_kernels is "
             f"{use_fused_kernels} or fused_kernels_backend is {fused_kernels_backend}"
         )
         return
+
+    if fused_kernels_backend is None:
+        fused_kernels_backend = "torch"
+    elif fused_kernels_backend not in ["triton", "torch"]:
+        raise ValueError(f"Unsupported fused_kernels_backend: {fused_kernels_backend}. Choose 'triton' or 'torch'.")
 
     forward_with_torch_backend_function = model.__class__.forward
     forward_with_triton_backend_function = model.__class__.forward
