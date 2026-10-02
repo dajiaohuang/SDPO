@@ -154,7 +154,8 @@ def main():
             copy(src=local_save_dir, dst=args.hdfs_dir)
             logger.info(f"Successfully copied files to HDFS: {args.hdfs_dir}")
         except Exception as e:
-            logger.error(f"Error copying files to HDFS: {e}")
+            logger.exception(f"Error copying files to HDFS: {e}")
+            raise
 
 
 if __name__ == "__main__":
