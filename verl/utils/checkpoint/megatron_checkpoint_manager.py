@@ -640,7 +640,8 @@ class MegatronCheckpointManager(BaseCheckpointManager):
 
                     hdfs_io.makedirs(hdfs_path, exist_ok=True)
                     hdfs_io.copy(src=dist_checkpoint_path, dst=hdfs_path, dirs_exist_ok=True)
-                    hdfs_io.copy(src=hf_config_tokenizer_path, dst=hdfs_path, dirs_exist_ok=True)
+                    if self.should_save_model:
+                        hdfs_io.copy(src=hf_config_tokenizer_path, dst=hdfs_path, dirs_exist_ok=True)
 
             # update latest_checkpointed_iteration.txt when async_save is True
             if self.checkpoint_config.async_save:
