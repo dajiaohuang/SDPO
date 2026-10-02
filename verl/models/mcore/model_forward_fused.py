@@ -90,6 +90,8 @@ def fused_forward_model_gen(vision_model: bool = False):
             model_kwargs["pixel_values_videos"] = multi_modal_inputs["pixel_values_videos"].to(input_ids.device)
         if "video_grid_thw" in multi_modal_inputs:
             model_kwargs["video_grid_thw"] = multi_modal_inputs["video_grid_thw"].to(input_ids.device)
+        if "second_per_grid_ts" in multi_modal_inputs:
+            model_kwargs["second_per_grid_ts"] = multi_modal_inputs["second_per_grid_ts"].to(input_ids.device)
 
         batch_size, seq_len = attention_mask.shape[:2]
         input_ids_rmpad, packed_seq_params = preprocess_packed_seqs(input_ids, attention_mask, pre_process=pre_process)

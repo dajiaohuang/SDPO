@@ -205,6 +205,7 @@ class Qwen2_5VLModel(MegatronModule):
         pixel_values_videos: torch.Tensor = None,
         image_grid_thw: torch.Tensor = None,
         video_grid_thw: torch.Tensor = None,
+        second_per_grid_ts: torch.Tensor = None,
         **kwargs,
     ) -> torch.Tensor:
         """Forward function of the Qwen2VL model.
@@ -346,6 +347,7 @@ class Qwen2_5VLModel(MegatronModule):
             input_ids,
             image_grid_thw=image_grid_thw,
             video_grid_thw=video_grid_thw,
+            second_per_grid_ts=second_per_grid_ts,
             attention_mask=attention_mask,
         )
         # THD
