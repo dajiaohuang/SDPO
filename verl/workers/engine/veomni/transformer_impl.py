@@ -280,13 +280,10 @@ class VeOmniEngine(FSDPEngine):
         return parallel_state.get_parallel_state().device_mesh.get_local_rank("dp")
 
     def get_data_parallel_size(self):
-        return torch.distributed.get_world_size() // parallel_state.get_parallel_state().ulysses_size
+        return parallel_state.get_parallel_state().dp_size
 
     def get_data_parallel_group(self):
-        if parallel_state.get_parallel_state().ulysses_size > 1:
-            return parallel_state.get_parallel_state().device_mesh.get_group(mesh_dim="dp")
-        else:
-            return torch.distributed.group.WORLD
+        return parallel_state.get_parallel_state().device_mesh.get_group(mesh_dim="dp")
 
     def is_mp_src_rank_with_outputs(self):
         """
