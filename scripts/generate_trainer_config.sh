@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euox pipefail
+set -euxo pipefail
 
 
 # Define config specifications: "config_name:output_file:config_arg"
