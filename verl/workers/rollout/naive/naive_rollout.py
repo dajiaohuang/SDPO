@@ -28,12 +28,10 @@ from torch import nn
 from verl import DataProto
 from verl.utils.torch_functional import logprobs_from_logits
 
-from ..base import BaseRollout
-
 __all__ = ["NaiveRollout"]
 
 
-class NaiveRollout(BaseRollout):
+class NaiveRollout:
     def __init__(self, module: nn.Module, config):
         """A naive rollout. It requires the module to be compatible with huggingface APIs. That is:
         The module should define __call__ to receive input_ids, attention_mask and position_ids.
@@ -43,7 +41,6 @@ class NaiveRollout(BaseRollout):
             module: module here follows huggingface APIs
             config: DictConfig
         """
-        super().__init__()
         self.config = config
         self.module = module
 
