@@ -933,24 +933,26 @@ class AgentLoopManager:
             DataProto: Output batch.
         """
 
-        # Fix for Issue #4147: Always call wake_up() to ensure weight sync
-        # The wake_up()/sleep() methods internally check free_cache_engine
-        self.wake_up()
-        if self.reward_model_manager:
-            self.reward_model_manager.wake_up()
+        try:
+            # Fix for Issue #4147: Always call wake_up() to ensure weight sync
+            # The wake_up()/sleep() methods internally check free_cache_engine
+            self.wake_up()
+            if self.reward_model_manager:
+                self.reward_model_manager.wake_up()
 
-        chunkes = prompts.chunk(len(self.agent_loop_workers))
-        outputs = ray.get(
-            [
-                worker.generate_sequences.remote(chunk)
-                for worker, chunk in zip(self.agent_loop_workers, chunkes, strict=True)
-            ]
-        )
+            chunks = prompts.chunk(len(self.agent_loop_workers))
+            outputs = ray.get(
+                [
+                    worker.generate_sequences.remote(chunk)
+                    for worker, chunk in zip(self.agent_loop_workers, chunks, strict=True)
+                ]
+            )
+        except BaseException:
+            self._sleep_after_generation(preserve_error=True)
+            raise
+
+        self._sleep_after_generation()
         output = DataProto.concat(outputs)
-        # Fix for Issue #4147: Always call sleep() to ensure proper cleanup
-        self.sleep()
-        if self.reward_model_manager:
-            self.reward_model_manager.sleep()
 
         # calculate performance metrics
         metrics = [output.meta_info.pop("metrics") for output in outputs]  # List[List[Dict[str, str]]]
@@ -958,6 +960,26 @@ class AgentLoopManager:
 
         output.meta_info = {"timing": timing, **outputs[0].meta_info}
         return output
+
+    def _sleep_after_generation(self, preserve_error: bool = False) -> None:
+        """Attempt both cleanup operations, preserving any active generation error."""
+        first_error = None
+        try:
+            self.sleep()
+        except Exception as error:
+            first_error = error
+            logger.exception("Failed to sleep rollout replicas after generation")
+
+        if self.reward_model_manager:
+            try:
+                self.reward_model_manager.sleep()
+            except Exception as error:
+                if first_error is None:
+                    first_error = error
+                logger.exception("Failed to sleep the reward model after generation")
+
+        if first_error is not None and not preserve_error:
+            raise first_error
 
     def _performance_metrics(self, metrics: list[list[dict[str, str]]], output: DataProto) -> dict[str, float]:
         timing = {}
