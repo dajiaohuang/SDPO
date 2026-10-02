@@ -16,6 +16,7 @@ Single Process Actor
 """
 
 import logging
+from functools import wraps
 
 import torch
 from tensordict.base import TensorDictBase
@@ -34,6 +35,19 @@ from verl.workers.actor import BasePPOActor
 logger = logging.getLogger(__name__)
 
 __all__ = ["RobDataParallelPPOActor"]
+
+
+def _restore_actor_modes_on_exit(func):
+    @wraps(func)
+    def wrapper(self, *args, **kwargs):
+        prev_modes = [(module, module.training) for module in self.actor_module.modules()]
+        try:
+            return func(self, *args, **kwargs)
+        finally:
+            for module, mode in prev_modes:
+                module.train(mode)
+
+    return wrapper
 
 
 class RobDataParallelPPOActor(BasePPOActor):
@@ -172,6 +186,7 @@ class RobDataParallelPPOActor(BasePPOActor):
         self.actor_optimizer.step()
         return grad_norm
 
+    @_restore_actor_modes_on_exit
     def compute_log_prob(self, data: DataProto, calculate_entropy=False) -> torch.Tensor:
         """Compute the log probability of the responses given input_ids, attention_mask and position_ids
 
