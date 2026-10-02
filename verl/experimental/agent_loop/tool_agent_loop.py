@@ -43,6 +43,12 @@ logger = logging.getLogger(__file__)
 logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
 
 
+def split_prompt_and_response(token_ids: list[int], response_length: int) -> tuple[list[int], list[int]]:
+    """Split a concatenated sequence without treating an empty response as the whole prompt."""
+    response_start = len(token_ids) - response_length
+    return token_ids[:response_start], token_ids[response_start:]
+
+
 class AgentState(Enum):
     PENDING = "pending"
     GENERATING = "generating"
@@ -186,8 +192,7 @@ class ToolAgentLoop(AgentLoopBase):
                 state = AgentState.TERMINATED
 
         # Finalize output
-        response_ids = agent_data.prompt_ids[-len(agent_data.response_mask) :]
-        prompt_ids = agent_data.prompt_ids[: len(agent_data.prompt_ids) - len(agent_data.response_mask)]
+        prompt_ids, response_ids = split_prompt_and_response(agent_data.prompt_ids, len(agent_data.response_mask))
         multi_modal_data = {}
         if agent_data.image_data is not None:
             multi_modal_data["images"] = agent_data.image_data

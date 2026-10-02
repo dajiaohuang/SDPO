@@ -20,7 +20,7 @@ from typing import Any, Optional
 from uuid import uuid4
 
 from verl.experimental.agent_loop.agent_loop import AgentLoopOutput, register
-from verl.experimental.agent_loop.tool_agent_loop import AgentData, AgentState, ToolAgentLoop
+from verl.experimental.agent_loop.tool_agent_loop import AgentData, AgentState, ToolAgentLoop, split_prompt_and_response
 from verl.utils.profiler import simple_timer
 
 logger = logging.getLogger(__file__)
@@ -237,8 +237,7 @@ class AsyncPartialToolAgentLoop(ToolAgentLoop):
 
     def _build_completed_output(self, agent_data: AgentData, param_version: int) -> AgentLoopOutput:
         """build completed output"""
-        response_ids = agent_data.prompt_ids[-len(agent_data.response_mask) :]
-        prompt_ids = agent_data.prompt_ids[: len(agent_data.prompt_ids) - len(agent_data.response_mask)]
+        prompt_ids, response_ids = split_prompt_and_response(agent_data.prompt_ids, len(agent_data.response_mask))
         multi_modal_data = {"image": agent_data.image_data} if agent_data.image_data is not None else {}
         output = AgentLoopOutput(
             prompt_ids=prompt_ids,
