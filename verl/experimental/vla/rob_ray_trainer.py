@@ -78,7 +78,8 @@ def compute_response_mask(data: DataProto) -> torch.Tensor:
     mask_traj = step_indices <= final_first_true_idx.unsqueeze(1)
 
     mask = mask_traj.view(complete.shape)  # shape: [batch_size, num_steps, chunk_size]
-    mask = mask.repeat_interleave(7, dim=-1)  # eapand to action dim
+    action_dim = data.batch["action"].shape[-1]
+    mask = mask.repeat_interleave(action_dim, dim=-1)  # expand to action dim
     return mask
 
 
