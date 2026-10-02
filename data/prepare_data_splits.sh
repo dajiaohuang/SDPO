@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 # Script to prepare data splits by creating my_data_splits folder,
 # copying input file to train.json and test.json, then running split_tests
