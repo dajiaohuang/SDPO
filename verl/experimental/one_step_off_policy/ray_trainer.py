@@ -321,9 +321,6 @@ class OneStepOffRayTrainer(RayPPOTrainer):
             epoch, batch_dict = next(continuous_iterator)
         except StopIteration:
             return None
-        except Exception as e:
-            print(f"Error in async_gen_next_batch: {e}")
-            return None
 
         metrics = {}
         timing_raw = {}
