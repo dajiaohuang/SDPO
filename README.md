@@ -268,7 +268,7 @@ Prepare the data by splitting it into individual tasks:
 ```
 export MY_DATA_SPLITS_DIR=lcb_v6
 export MY_DATA_SINGLES_DIR=lcb_v6_singles
-bash dat/prepare_data_splits.sh datasets/lcb_v6.json
+bash data/prepare_data_splits.sh datasets/lcb_v6.json
 ```
 
 Run the multi-turn baseline for, e.g., question 120:
