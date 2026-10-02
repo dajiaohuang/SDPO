@@ -602,8 +602,8 @@ class FullyAsyncTrainer(FullyAsyncRayPPOTrainer):
             from verl.utils.profiler import marked_timer
 
             timing_raw = {}
-            await self.async_rollout_manager.wake_up()
             try:
+                await self.async_rollout_manager.wake_up()
                 with marked_timer("trainer/validate_time", timing_raw):
                     self.train_val_metrics = self._validate(True)
             except BaseException:

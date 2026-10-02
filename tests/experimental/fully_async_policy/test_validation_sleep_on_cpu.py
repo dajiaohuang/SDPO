@@ -37,5 +37,25 @@ async def test_rollout_manager_sleeps_after_validation_failure():
     assert lifecycle == ["wake", "sleep"]
 
 
+@pytest.mark.asyncio
+async def test_rollout_manager_sleeps_after_partial_wake_failure():
+    lifecycle = []
+
+    async def fail_wake():
+        lifecycle.append("wake")
+        raise RuntimeError("wake failed")
+
+    trainer = SimpleNamespace(
+        config=SimpleNamespace(async_training=SimpleNamespace(use_trainer_do_validate=True)),
+        async_rollout_manager=SimpleNamespace(wake_up=fail_wake, sleep=lambda: _record(lifecycle, "sleep")),
+        _validate=lambda _: None,
+    )
+
+    with pytest.raises(RuntimeError, match="wake failed"):
+        await FullyAsyncTrainer.__ray_actor_class__._validate_process(trainer)
+
+    assert lifecycle == ["wake", "sleep"]
+
+
 async def _record(values, event):
     values.append(event)
