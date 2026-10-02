@@ -12,12 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import logging
 
 import numpy as np
 import ray
 from transfer_queue import BatchMeta
 
 import verl.experimental.agent_loop.agent_loop as agent_loop
+
+logger = logging.getLogger(__name__)
 
 
 class AgentLoopManager(agent_loop.AgentLoopManager):
@@ -31,23 +34,25 @@ class AgentLoopManager(agent_loop.AgentLoopManager):
             BatchMeta: Output batch metadata.
         """
 
-        if self.config.actor_rollout_ref.rollout.free_cache_engine:
-            self.wake_up()
-        if self.reward_model_manager and self.config.reward_model.rollout.free_cache_engine:
-            self.reward_model_manager.wake_up()
+        try:
+            if self.config.actor_rollout_ref.rollout.free_cache_engine:
+                self.wake_up()
+            if self.reward_model_manager and self.config.reward_model.rollout.free_cache_engine:
+                self.reward_model_manager.wake_up()
 
-        chunkes = prompts.chunk(len(self.agent_loop_workers))
-        outputs = ray.get(
-            [
-                worker.generate_sequences.remote(chunk)
-                for worker, chunk in zip(self.agent_loop_workers, chunkes, strict=True)
-            ]
-        )
+            chunks = prompts.chunk(len(self.agent_loop_workers))
+            outputs = ray.get(
+                [
+                    worker.generate_sequences.remote(chunk)
+                    for worker, chunk in zip(self.agent_loop_workers, chunks, strict=True)
+                ]
+            )
+        except BaseException:
+            self._sleep_after_generation(preserve_error=True)
+            raise
+
+        self._sleep_after_generation()
         output = BatchMeta.concat(outputs)
-        if self.config.actor_rollout_ref.rollout.free_cache_engine:
-            self.sleep()
-        if self.reward_model_manager and self.config.reward_model.rollout.free_cache_engine:
-            self.reward_model_manager.sleep()
 
         # calculate performance metrics
         metrics = [output.extra_info.pop("metrics") for output in outputs]  # List[List[Dict[str, str]]]
@@ -55,6 +60,27 @@ class AgentLoopManager(agent_loop.AgentLoopManager):
 
         output.set_extra_info("timing", timing)
         return output
+
+    def _sleep_after_generation(self, preserve_error: bool = False) -> None:
+        """Attempt both cleanup operations, preserving an active generation error."""
+        first_error = None
+        if self.config.actor_rollout_ref.rollout.free_cache_engine:
+            try:
+                self.sleep()
+            except Exception as error:
+                first_error = error
+                logger.exception("Failed to sleep rollout replicas after generation")
+
+        if self.reward_model_manager and self.config.reward_model.rollout.free_cache_engine:
+            try:
+                self.reward_model_manager.sleep()
+            except Exception as error:
+                if first_error is None:
+                    first_error = error
+                logger.exception("Failed to sleep the reward model after generation")
+
+        if first_error is not None and not preserve_error:
+            raise first_error
 
     def _performance_metrics(self, metrics: list[list[dict[str, str]]], output: BatchMeta) -> dict[str, float]:
         timing = {}
