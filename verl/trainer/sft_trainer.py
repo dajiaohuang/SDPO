@@ -349,7 +349,9 @@ class SFTTrainer:
                 is_save_step = global_step % self.save_freq == 0
 
                 # early exit or validation step
-                if is_last_step and self.val_dataloader is not None or (self.test_freq > 0 and is_valid_step):
+                if self.val_dataloader is not None and (
+                    is_last_step or (self.test_freq > 0 and is_valid_step)
+                ):
                     # Perform validation
                     val_losses = []
                     for val_data in self.val_dataloader:
