@@ -253,7 +253,7 @@ class MemorySnapshotSampler:
         self.out_dir = out_dir
         self.tag = tag
 
-    def dump_memory_snapshot(self, out_dir: str = "./mem_snapshots", tag: str = "snapshot", sub_dir: str = None):
+    def dump_memory_snapshot(self, out_dir: str | None = None, tag: str | None = None, sub_dir: str = None):
         """
         Generates a memory snapshot and saves it as a pickle file in a specified directory.
         The files are organized by timestamp in subdirectories, with all ranks' files
@@ -265,6 +265,11 @@ class MemorySnapshotSampler:
             tag (str): A string tag to prepend to the filename for easier identification.
             sub_dir (str): A subdirectory to place the snapshot file in.
         """
+        if out_dir is None:
+            out_dir = self.out_dir
+        if tag is None:
+            tag = self.tag
+
         if sub_dir is None:
             timestamp = datetime.now().strftime("%Y%m%d-%H%M")
             out_path = Path(out_dir) / timestamp
