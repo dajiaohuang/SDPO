@@ -171,6 +171,7 @@ def run_question(
 
         # trim earliest feedback if prompt exceeds max context length
         if prompt_length > MAX_CONTEXT_LEN:
+            max_context_len_exceeded = True
             trimmed = 0
             while feedback_history and prompt_length > MAX_CONTEXT_LEN:
                 feedback_history.pop(0)
