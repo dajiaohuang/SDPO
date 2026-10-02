@@ -92,6 +92,7 @@ class MultiTurnSFTDataset(Dataset):
         self.tools_key = config.get("tools_key", "tools")
         self.enable_thinking_key = config.get("enable_thinking_key", "enable_thinking")
         self.apply_chat_template_kwargs = config.get("apply_chat_template_kwargs", {})
+        self._prompt_template_cache = {}
         self.shuffle = config.get("shuffle", False)
         self.seed = config.get("seed")
         self.max_samples = max_samples
@@ -158,7 +159,17 @@ class MultiTurnSFTDataset(Dataset):
 
         # system prompt: <|im_start|>system\nYou are a helpful assistant.<|im_end|>\n
         # generation prompt: <|im_start|>assistant\n
-        self.system_prompt, self.generation_prompt = extract_system_prompt_and_generation(self.tokenizer)
+        self.system_prompt, self.generation_prompt = self._get_prompt_template_tokens(None)
+
+    def _get_prompt_template_tokens(self, enable_thinking: Optional[bool]):
+        if enable_thinking not in self._prompt_template_cache:
+            kwargs = {**self.apply_chat_template_kwargs}
+            if enable_thinking is not None:
+                kwargs["enable_thinking"] = enable_thinking
+            self._prompt_template_cache[enable_thinking] = extract_system_prompt_and_generation(
+                self.tokenizer, **kwargs
+            )
+        return self._prompt_template_cache[enable_thinking]
 
     def __len__(self):
         return len(self.messages)
@@ -189,6 +200,8 @@ class MultiTurnSFTDataset(Dataset):
         if enable_thinking is not None:
             apply_chat_template_kwargs["enable_thinking"] = enable_thinking
 
+        system_prompt, generation_prompt = self._get_prompt_template_tokens(enable_thinking)
+
         inputs = processor.apply_chat_template(
             [message],
             tools=tools,
@@ -205,13 +218,13 @@ class MultiTurnSFTDataset(Dataset):
 
         # remove system prompt if exists
         if index != 0 and message["role"] != "system":
-            input_ids = input_ids[len(self.system_prompt) :]
-            attention_mask = attention_mask[len(self.system_prompt) :]
+            input_ids = input_ids[len(system_prompt) :]
+            attention_mask = attention_mask[len(system_prompt) :]
 
         if message["role"] == "assistant":
             loss_mask = torch.ones_like(attention_mask)
             # mask out generation prompt if assistant message
-            loss_mask[: len(self.generation_prompt)] = 0
+            loss_mask[: len(generation_prompt)] = 0
         else:
             loss_mask = torch.zeros_like(attention_mask)
 
