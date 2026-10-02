@@ -33,6 +33,7 @@ import pandas as pd
 from omegaconf import OmegaConf
 from openai.types.chat import ChatCompletion
 
+from verl.trainer.generation_utils import chats_to_object_array
 from verl.utils.hdfs_io import makedirs
 from verl.workers.rollout.replica import get_rollout_replica_class
 
@@ -156,7 +157,7 @@ def main(config):
     dataset = pd.concat(datasets, axis=0, ignore_index=True)
     chat_lst = dataset[config.data.prompt_key].tolist()
     chat_lst = [chat.tolist() for chat in chat_lst]
-    chat_numpy = np.array(chat_lst)
+    chat_numpy = chats_to_object_array(chat_lst)
 
     # start native server
     server_handles, server_addresses = asyncio.run(start_server(config))
