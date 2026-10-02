@@ -472,9 +472,8 @@ class RayWorkerGroup(WorkerGroup):
         # cia.add_kwarg("_world_size", world_size)
 
         rank = -1
-        local_world_size = resource_pool.store[0]
         for pg_idx, pg in enumerate(sort_placement_group_by_node_ip(pgs)):
-            assert local_world_size <= pg.bundle_count, f"when generating for {self.name_prefix}, for the "
+            local_world_size = pg.bundle_count
             if pg_idx == 0:
                 self._get_master_addr_port(pg)
 
@@ -485,6 +484,7 @@ class RayWorkerGroup(WorkerGroup):
                     pg_idx=pg_idx,
                     pg=pg,
                     local_rank=local_rank,
+                    local_world_size=local_world_size,
                     resource_pool=resource_pool,
                     ray_cls_with_init=ray_cls_with_init,
                     worker_env=worker_env,
@@ -506,31 +506,38 @@ class RayWorkerGroup(WorkerGroup):
         world_size = resource_pool.world_size
         self._world_size = world_size
 
+        start = resource_pool.start_bundle_index
+        end = start + world_size
         rank = -1
-        local_world_size = resource_pool.store[0]
-        self._get_master_addr_port(pgs[0])
-        for curr_rank in range(resource_pool.start_bundle_index, resource_pool.start_bundle_index + world_size):
-            pg_idx = curr_rank // local_world_size
-            pg = pgs[pg_idx]
-            local_rank = curr_rank % local_world_size
-            assert local_world_size <= pg.bundle_count, f"when generating for {self.name_prefix}, for the "
+        global_bundle_index = 0
+        for pg_idx, pg in enumerate(pgs):
+            local_world_size = pg.bundle_count
+            pg_start = global_bundle_index
+            pg_end = pg_start + local_world_size
+            global_bundle_index = pg_end
+            if pg_end <= start or pg_start >= end:
+                continue
+            if rank == -1:
+                self._get_master_addr_port(pg)
+            for local_rank in range(max(start, pg_start) - pg_start, min(end, pg_end) - pg_start):
+                rank += 1
+                self._create_worker(
+                    rank=rank,
+                    pg_idx=pg_idx,
+                    pg=pg,
+                    local_rank=local_rank,
+                    local_world_size=local_world_size,
+                    resource_pool=resource_pool,
+                    ray_cls_with_init=ray_cls_with_init,
+                    worker_env=worker_env,
+                    detached=detached,
+                )
 
-            rank += 1
-            self._create_worker(
-                rank=rank,
-                pg_idx=pg_idx,
-                pg=pg,
-                local_rank=local_rank,
-                resource_pool=resource_pool,
-                ray_cls_with_init=ray_cls_with_init,
-                worker_env=worker_env,
-                detached=detached,
-            )
-
-    def _create_worker(self, rank, pg_idx, pg, local_rank, resource_pool, ray_cls_with_init, worker_env, detached):
+    def _create_worker(
+        self, rank, pg_idx, pg, local_rank, local_world_size, resource_pool, ray_cls_with_init, worker_env, detached
+    ):
         world_size = resource_pool.world_size
         use_gpu = resource_pool.use_gpu
-        local_world_size = resource_pool.store[0]
         num_gpus = 1 / resource_pool.max_colocate_count
 
         # we pass in environment variable at option so that Worker can use environment variable to set
