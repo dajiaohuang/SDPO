@@ -28,7 +28,7 @@ import torch
 import zmq
 import zmq.asyncio
 
-from verl.checkpoint_engine.base import CheckpointEngine, CheckpointEngineRegistry, TensorMeta
+from verl.checkpoint_engine.base import CheckpointEngine, CheckpointEngineRegistry, TensorMeta, synchronize_device
 from verl.utils.net_utils import get_free_port, is_valid_ipv6_address
 
 logger = logging.getLogger(__name__)
@@ -366,7 +366,7 @@ class NIXLCheckpointEngine(CheckpointEngine):
 
             # fill the tensor bucket
             if offset + weight.nbytes > self.bucket_size:
-                torch.cuda.synchronize()
+                synchronize_device(self.device)
 
                 # wait previous bucket to be received
                 if readable_op is not None:
@@ -400,7 +400,7 @@ class NIXLCheckpointEngine(CheckpointEngine):
             offset += weight.nbytes
 
         # send last bucket meta to next agent
-        torch.cuda.synchronize()
+        synchronize_device(self.device)
         if readable_op is not None:
             await readable_op.wait_for_complete()
 
@@ -465,7 +465,7 @@ class NIXLCheckpointEngine(CheckpointEngine):
             total_params += len(next_metadata["bucket_meta"])
 
             # 5. swap send and recv buf
-            torch.cuda.synchronize()  # sync non-blocking copy
+            synchronize_device(self.device)  # sync non-blocking copy
             metadata = next_metadata
             send_buf, recv_buf = recv_buf, send_buf
             send_descs, recv_descs = recv_descs, send_descs

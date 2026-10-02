@@ -18,6 +18,12 @@ from typing import Generator, TypedDict
 import torch
 
 
+def synchronize_device(device: str) -> None:
+    """Synchronize CUDA transfers when the configured device uses CUDA."""
+    if torch.device(device).type == "cuda":
+        torch.cuda.synchronize()
+
+
 class TensorMeta(TypedDict):
     name: str
     shape: torch.Size
