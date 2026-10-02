@@ -145,11 +145,17 @@ class ProfilerConfig(BaseConfig):
         assert self.tool == other.tool, (
             f"Cannot intersect ProfilerConfig with different tools: {self.tool} vs {other.tool}"
         )
+        if self.all_ranks:
+            ranks = list(other.ranks or [])
+        elif other.all_ranks:
+            ranks = list(self.ranks or [])
+        else:
+            ranks = list(set(self.ranks or []) & set(other.ranks or []))
         return ProfilerConfig(
             tool=self.tool,
             enable=self.enable and other.enable,
             all_ranks=self.all_ranks and other.all_ranks,
-            ranks=list(set(self.ranks or []) & set(other.ranks or [])),
+            ranks=ranks,
             save_path=self.save_path,
             tool_config=self.tool_config,
             global_tool_config=self.global_tool_config if self.global_tool_config else other.global_tool_config,
