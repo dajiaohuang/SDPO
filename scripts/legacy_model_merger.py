@@ -687,6 +687,19 @@ class MegatronModelMerger(BaseModelMerger):
         """
         ref_state_dict = load_file(Path(self.config.test_hf_dir) / "model.safetensors")
 
+        def is_ignored(name: str) -> bool:
+            return "rotary_emb.inv_freq" in name or (self.config.tie_word_embedding and "lm_head.weight" in name)
+
+        expected_keys = {name for name in ref_state_dict if not is_ignored(name)}
+        collected_keys = {
+            name
+            for name in state_dict
+            if not is_ignored(name) and not (name.endswith(".bias") and name not in ref_state_dict)
+        }
+        missing_keys = expected_keys - collected_keys
+        if missing_keys:
+            raise RuntimeError(f"Missing keys in collected Megatron state dict: {list(sorted(missing_keys))}")
+
         for name, loaded_weight in state_dict.items():
             # name = self._replace_name(original_name, self.params_mapping)
             if not name or name.endswith(".bias") and name not in ref_state_dict:
