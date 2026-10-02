@@ -150,7 +150,8 @@ if [ "${ACTOR_STRATEGY}" == "fsdp" ]; then
         actor_rollout_ref.ref.fsdp_config.param_offload=${ref_offload} \
         actor_rollout_ref.ref.ulysses_sequence_parallel_size=${sp_size} \
         actor_rollout_ref.actor.fsdp_config.fsdp_size=${fsdp_size} \
-        2>&1 | tee "$log_file" $@
+        "$@" \
+        2>&1 | tee "$log_file"
 
 elif [ "${ACTOR_STRATEGY}" == "megatron" ]; then
     echo "Running TransferQueue training with Megatron strategy..."
@@ -180,7 +181,8 @@ elif [ "${ACTOR_STRATEGY}" == "megatron" ]; then
         actor_rollout_ref.ref.megatron.pipeline_model_parallel_size=${train_pp} \
         actor_rollout_ref.ref.megatron.tensor_model_parallel_size=${train_tp} \
         actor_rollout_ref.ref.megatron.param_offload=${ref_offload} \
-        2>&1 | tee "$log_file" $@
+        "$@" \
+        2>&1 | tee "$log_file"
 else
     echo "Error: Unknown strategy ${ACTOR_STRATEGY}. Please use 'fsdp' or 'megatron'"
     exit 1
