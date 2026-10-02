@@ -85,7 +85,14 @@ def marked_timer(name: str, timing_raw: dict[str, float], *args: Any, **kwargs: 
     mark_range = mark_start_range(message=name)
     from .performance import _timer
 
-    yield from _timer(name, timing_raw)
+    try:
+        yield from _timer(name, timing_raw)
+    except BaseException:
+        try:
+            mark_end_range(mark_range)
+        except Exception:
+            logger.exception("Failed to close MSTX timer range after worker failure")
+        raise
     mark_end_range(mark_range)
 
 

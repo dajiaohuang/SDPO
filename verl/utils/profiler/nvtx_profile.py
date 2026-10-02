@@ -110,7 +110,14 @@ def marked_timer(
     mark_range = mark_start_range(message=name, color=color, domain=domain, category=category)
     from .performance import _timer
 
-    yield from _timer(name, timing_raw)
+    try:
+        yield from _timer(name, timing_raw)
+    except BaseException:
+        try:
+            mark_end_range(mark_range)
+        except Exception:
+            logger.exception("Failed to close NVTX timer range after worker failure")
+        raise
     mark_end_range(mark_range)
 
 
