@@ -121,20 +121,23 @@ def load_module(module_path: str, module_name: Optional[str] = None) -> object:
             raise ImportError(f"Could not load module from {module_path=}")
 
         module = importlib.util.module_from_spec(spec)
-        try:
-            spec.loader.exec_module(module)
-        except Exception as e:
-            raise RuntimeError(f"Error loading module from {module_path=}") from e
-
         if module_name is not None:
             import sys
 
             # Avoid overwriting an existing module with a different object.
             if module_name in sys.modules and sys.modules[module_name] is not module:
                 raise RuntimeError(
-                    f"Module name '{module_name}' already in `sys.modules` and points to a different module."
+                    f"Module name {module_name!r} already in `sys.modules` and points to a different module."
                 )
+            # Register before execution so code can inspect its own module.
             sys.modules[module_name] = module
+
+        try:
+            spec.loader.exec_module(module)
+        except Exception as e:
+            if module_name is not None and sys.modules.get(module_name) is module:
+                del sys.modules[module_name]
+            raise RuntimeError(f"Error loading module from {module_path=}") from e
 
     return module
 
