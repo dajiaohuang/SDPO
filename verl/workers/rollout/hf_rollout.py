@@ -31,14 +31,11 @@ from verl import DataProto
 from verl.utils.device import get_device_name, get_torch_device
 from verl.utils.torch_functional import get_response_mask
 
-from .base import BaseRollout
-
 __all__ = ["HFRollout"]
 
 
-class HFRollout(BaseRollout):
+class HFRollout:
     def __init__(self, module: nn.Module, config):
-        super().__init__()
         self.config = config
         self.module = module
 
