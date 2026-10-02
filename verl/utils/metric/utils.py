@@ -98,7 +98,10 @@ class Metric:
             raise ValueError(f"Unsupported aggregation type: {aggregation}")
         self.values = []
         if value is not None:
-            self.append(value)
+            if isinstance(value, list):
+                self.extend(value)
+            else:
+                self.append(value)
 
     def append(self, value: Union[Numeric, "Metric"]) -> None:
         if isinstance(value, Metric):
