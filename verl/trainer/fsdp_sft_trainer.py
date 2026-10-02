@@ -774,8 +774,8 @@ class FSDPSFTTrainer:
                     tracking.log(data=metric, step=global_step)
 
                 is_last_step = global_step >= self.total_training_steps
-                is_valid_step = global_step % self.config.trainer.test_freq == 0
-                is_save_step = global_step % self.config.trainer.save_freq == 0
+                is_valid_step = self.config.trainer.test_freq > 0 and global_step % self.config.trainer.test_freq == 0
+                is_save_step = self.config.trainer.save_freq > 0 and global_step % self.config.trainer.save_freq == 0
 
                 # early exit or validation step
                 if is_last_step or (self.config.trainer.test_freq > 0 and is_valid_step):

@@ -321,8 +321,8 @@ class SFTTrainer:
                 tracking.log(data=metrics, step=global_step)
 
                 is_last_step = global_step >= self.total_training_steps
-                is_valid_step = global_step % self.test_freq == 0
-                is_save_step = global_step % self.save_freq == 0
+                is_valid_step = self.test_freq > 0 and global_step % self.test_freq == 0
+                is_save_step = self.save_freq > 0 and global_step % self.save_freq == 0
 
                 # early exit or validation step
                 if is_last_step and self.val_dataloader is not None or (self.test_freq > 0 and is_valid_step):
