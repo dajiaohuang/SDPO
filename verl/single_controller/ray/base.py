@@ -324,7 +324,7 @@ class RayClassWithInitArgs(ClassWithInitArgs):
         if use_gpu and device_name == "npu":
             options["resources"] = {"NPU": num_gpus}
 
-        if len(self._additional_resource) > 1:
+        if self._additional_resource:
             for k, v in self._additional_resource.items():
                 options[k] = v
 
