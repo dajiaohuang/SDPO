@@ -26,6 +26,8 @@ from torch_npu.npu import mstx
 from .config import NPUToolConfig
 from .profile import DistProfiler, ProfilerConfig
 
+logger = logging.getLogger(__name__)
+
 
 def mark_start_range(message: Optional[str] = None) -> None:
     """Start a mark range in the profiler.
@@ -259,7 +261,23 @@ class NPUProfiler(DistProfiler):
                         profile_npu.start()
                         mark_range = mark_start_range(message=profile_name)
 
-                result = func(*args, **kwargs_inner)
+                try:
+                    result = func(*args, **kwargs_inner)
+                except BaseException:
+                    try:
+                        mark_end_range(mark_range)
+                    except Exception:
+                        logger.exception("Failed to close MSTX range after worker failure")
+                    if discrete_mode:
+                        try:
+                            profile_npu.step()
+                        except Exception:
+                            logger.exception("Failed to advance discrete MSTX profiling after worker failure")
+                        try:
+                            profile_npu.stop()
+                        except Exception:
+                            logger.exception("Failed to stop discrete MSTX profiling after worker failure")
+                    raise
 
                 if profile_enable:
                     if not discrete_mode:

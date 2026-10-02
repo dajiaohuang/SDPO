@@ -14,6 +14,7 @@
 # limitations under the License.
 
 import functools
+import logging
 from contextlib import contextmanager
 from typing import Callable, Optional
 
@@ -22,6 +23,8 @@ import torch
 
 from .config import NsightToolConfig
 from .profile import DistProfiler, ProfilerConfig
+
+logger = logging.getLogger(__name__)
 
 
 def mark_start_range(
@@ -180,15 +183,29 @@ class NsightSystemsProfiler(DistProfiler):
                     return func(*args, **kwargs_inner)
 
                 profile_name = message or func.__name__
+                profile_this_step = self.this_step
 
-                if self.this_step:
+                if profile_this_step:
                     if self.discrete:
                         torch.cuda.profiler.start()
                     mark_range = mark_start_range(message=profile_name, color=color, domain=domain, category=category)
 
-                result = func(*args, **kwargs_inner)
+                try:
+                    result = func(*args, **kwargs_inner)
+                except BaseException:
+                    if profile_this_step:
+                        try:
+                            mark_end_range(mark_range)
+                        except Exception:
+                            logger.exception("Failed to close NVTX range after worker failure")
+                        if self.discrete:
+                            try:
+                                torch.cuda.profiler.stop()
+                            except Exception:
+                                logger.exception("Failed to stop discrete NVTX profiling after worker failure")
+                    raise
 
-                if self.this_step:
+                if profile_this_step:
                     mark_end_range(mark_range)
                     if self.discrete:
                         torch.cuda.profiler.stop()
