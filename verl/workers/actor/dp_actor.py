@@ -411,6 +411,13 @@ class DataParallelPPOActor(BasePPOActor):
                             unpad_dim=0,
                             padding_size=pad_size,
                         )
+                    if compute_all_logps:
+                        all_logps_rmpad = gather_outputs_and_unpad(
+                            all_logps_rmpad,
+                            gather_dim=0,
+                            unpad_dim=0,
+                            padding_size=pad_size,
+                        )
                     if use_topk:
                         topk_logps_rmpad = gather_outputs_and_unpad(
                             topk_logps_rmpad,
