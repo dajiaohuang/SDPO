@@ -57,6 +57,16 @@ async def _call_with_kwargs_async(raw_fn, extra_kwargs, *args, **kwargs):
     return await raw_fn(*args, **merged_kwargs)
 
 
+def _accepts_return_dict(reward_fn) -> bool:
+    try:
+        parameters = inspect.signature(reward_fn).parameters.values()
+    except (TypeError, ValueError):
+        return True
+    return any(
+        parameter.name == "return_dict" or parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in parameters
+    )
+
+
 def get_custom_reward_fn(config: DictConfig) -> Optional[RawRewardFn]:
     """Load and return a custom reward function from external file.
 
@@ -185,13 +195,16 @@ def compute_reward(data: DataProto, reward_fn: AbstractRewardManager) -> tuple[t
     Returns:
         Tuple of reward tensor and extra info dictionary.
     """
-    try:
+    if _accepts_return_dict(reward_fn):
         reward_result = reward_fn(data, return_dict=True)
+    else:
+        reward_result = reward_fn(data)
+
+    if isinstance(reward_result, dict):
         reward_tensor = reward_result["reward_tensor"]
         reward_extra_infos_dict = reward_result.get("reward_extra_info", {})
-    except Exception as e:
-        print(f"Error in reward_fn: {e}")
-        reward_tensor = reward_fn(data)
+    else:
+        reward_tensor = reward_result
         reward_extra_infos_dict = {}
 
     return reward_tensor, reward_extra_infos_dict
