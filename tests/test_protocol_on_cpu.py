@@ -58,6 +58,22 @@ def test_union_numpy_dict():
     arr1 = np.array([1, "hello", np.array([2, 3])], dtype=object)
     arr2 = np.array([1, "hello", np.array([2, 3])], dtype=object)
     union_numpy_dict({"a": arr1}, {"a": arr2})
+
+    # Fixed-width strings are non-object arrays too; their comparison must not
+    # ask NumPy to test string values for NaN.
+    string_arr = np.array(["prompt", "response"])
+    union_numpy_dict({"a": string_arr}, {"a": string_arr.copy()})
+    with pytest.raises(AssertionError):
+        union_numpy_dict({"a": string_arr}, {"a": np.array(["prompt", "other"])})
+
+    data = DataProto.from_dict(
+        tensors={"ids": torch.ones((2, 1))}, non_tensors={"text": string_arr}
+    )
+    data.union(
+        DataProto.from_dict(
+            tensors={"ids": torch.ones((2, 1))}, non_tensors={"text": string_arr.copy()}
+        )
+    )
     # --- Test Case 1: The original test with mixed object/float types ---
     # This test case from the original test file is preserved.
     data = np.random.random(100)
