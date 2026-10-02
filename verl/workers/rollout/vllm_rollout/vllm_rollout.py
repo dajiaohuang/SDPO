@@ -170,11 +170,20 @@ class vLLMAsyncRollout(BaseRollout):
             try:
                 message = await self.socket.recv()
                 method, args, kwargs = pickle.loads(message)
+            except Exception as e:
+                logger.exception(f"vLLMAsyncRollout ZeroMQ receive error: {e}")
+                break
+
+            try:
                 result = await self._execute_method(method, *args, **kwargs)
+            except Exception as e:
+                logger.exception(f"vLLMAsyncRollout method {method!r} failed: {e}")
+                result = e
+
+            try:
                 await self.socket.send(pickle.dumps(result))
             except Exception as e:
-                logger.exception(f"vLLMAsyncRollout _loop_forever error: {e}")
-                await self.socket.send(pickle.dumps(e))
+                logger.exception(f"vLLMAsyncRollout ZeroMQ send error: {e}")
                 break
 
     def _build_inference_engine(self) -> WorkerWrapperBase:
