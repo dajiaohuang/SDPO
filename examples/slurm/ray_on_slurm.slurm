@@ -11,6 +11,8 @@
 #SBATCH --output=slurm-%j.out
 #SBATCH --error=slurm-%j.err
 
+set -o pipefail
+
 # load necessary modules
 
 # replace these information with your own
