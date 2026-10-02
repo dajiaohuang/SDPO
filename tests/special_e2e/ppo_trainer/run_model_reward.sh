@@ -94,7 +94,7 @@ python3 -m verl.trainer.main_ppo \
     trainer.nnodes=1 \
     trainer.n_gpus_per_node="${NUM_GPUS}" \
     trainer.val_before_train="${VAL_BEFORE_TRAIN}" \
-    trainer.test_freq="${VAL_BEFORE_TRAIN}" \
+    trainer.test_freq="${TEST_FREQ}" \
     trainer.save_freq="${SAVE_FREQ}" \
     trainer.resume_mode="${RESUME_MODE}" \
     trainer.total_epochs=2 \
