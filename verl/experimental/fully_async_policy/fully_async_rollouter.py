@@ -573,23 +573,23 @@ class FullyAsyncRollouter(FullyAsyncRayPPOTrainer):
             await self.processor_task
             print("[FullyAsyncRollouter] Streaming process completed")
 
-        except Exception as e:
-            print(f"[FullyAsyncRollouter] Streaming process exception:{e}")
-
         finally:
+            if self.feed_task and not self.feed_task.done():
+                self.feed_task.cancel()
             if self.processor_task:
                 self.processor_task.cancel()
 
-            await asyncio.gather(self.processor_task, return_exceptions=True)
+            await asyncio.gather(self.feed_task, self.processor_task, return_exceptions=True)
 
-        # Send a finish signal
-        await self.message_queue_client.put_sample(
-            sample=None,
-            param_version=self.current_param_version,
-        )
-
-        async with self.lock:
-            self.running = False
+            try:
+                # Unblock the trainer even when generation failed; the exception still propagates.
+                await self.message_queue_client.put_sample(
+                    sample=None,
+                    param_version=self.current_param_version,
+                )
+            finally:
+                async with self.lock:
+                    self.running = False
 
     async def fit(self):
         """
@@ -612,10 +612,8 @@ class FullyAsyncRollouter(FullyAsyncRayPPOTrainer):
         monitor_task = asyncio.create_task(self._async_monitor_loop())
 
         try:
-            # Run build and monitoring tasks concurrently
-            await asyncio.gather(generation_task, monitor_task, return_exceptions=True)
-        except Exception as e:
-            print(f"[FullyAsyncRollouter] Asynchronous task execution error: {e}")
+            # Run build and monitoring tasks concurrently and propagate either failure.
+            await asyncio.gather(generation_task, monitor_task)
         finally:
             if not generation_task.done():
                 generation_task.cancel()
