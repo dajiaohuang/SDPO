@@ -328,6 +328,12 @@ class MultiTurnSFTDataset(Dataset):
 
         # 3. handle padding
         sequence_length = input_ids.shape[0]
+        if sequence_length > self.max_length and multi_modal_inputs:
+            raise ValueError(
+                "Cannot truncate an overlength multimodal example without also truncating its visual inputs. "
+                f"{sequence_length=} is larger than {self.max_length=}"
+            )
+
         # Handle sequence length
         if self.pad_mode == DatasetPadMode.RIGHT:
             if sequence_length < self.max_length:
