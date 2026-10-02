@@ -7,6 +7,7 @@ export WANDB_EXP=3b-${NOW}
 MODEL_PATH=Qwen/Qwen2.5-3B-Instruct
 
 set -x
+set -eo pipefail
 nproc_per_gpu=62
 nnodes=1
 ngpu_per_node=1
