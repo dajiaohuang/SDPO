@@ -49,7 +49,7 @@ run: |
     retry_count=0
     max_retries=30
     while [ $retry_count -lt $max_retries ]; do
-      connected_nodes=$(ray status 2>/dev/null | grep -c "node_" || echo "0")
+      connected_nodes=$(ray status 2>/dev/null | grep -c "node_" || true)
       echo "Connected nodes: $connected_nodes/$NUM_NODES (attempt $((retry_count+1))/$max_retries)"
       
       if [ "$connected_nodes" -ge "$NUM_NODES" ]; then
@@ -62,9 +62,9 @@ run: |
     done
 
     if [ $retry_count -eq $max_retries ]; then
-      echo "WARNING: Not all nodes connected to Ray cluster after $max_retries attempts"
-      echo "Current Ray status:"
+      echo "ERROR: Not all nodes connected to Ray cluster after $max_retries attempts"
       ray status
+      exit 1
     fi
 
     python3 -m verl.trainer.main_ppo \

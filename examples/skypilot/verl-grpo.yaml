@@ -37,7 +37,7 @@ run: |
     retry_count=0
     max_retries=30
     while [ $retry_count -lt $max_retries ]; do
-      connected_nodes=$(ray status 2>/dev/null | grep -c "node_" || echo "0")
+      connected_nodes=$(ray status 2>/dev/null | grep -c "node_" || true)
       echo "Connected nodes: $connected_nodes/$NUM_NODES (attempt $((retry_count+1))/$max_retries)"
       
       if [ "$connected_nodes" -ge "$NUM_NODES" ]; then
@@ -48,6 +48,12 @@ run: |
       retry_count=$((retry_count+1))
       sleep 10
     done
+
+    if [ "$connected_nodes" -lt "$NUM_NODES" ]; then
+      echo "ERROR: Ray cluster has $connected_nodes/$NUM_NODES nodes after $max_retries attempts"
+      ray status
+      exit 1
+    fi
 
     python3 -m verl.trainer.main_ppo \
      algorithm.adv_estimator=grpo \
