@@ -996,8 +996,17 @@ class ActorRolloutRefWorker(Worker, DistProfilerExtension):
             loop.run_until_complete(self.rollout_mode())
             log_gpu_memory_usage("After switch to rollout mode", logger=logger)
 
-        with simple_timer("generate_sequences", timing_generate):
-            output = self.rollout.generate_sequences(prompts=prompts)
+        try:
+            with simple_timer("generate_sequences", timing_generate):
+                output = self.rollout.generate_sequences(prompts=prompts)
+        except BaseException:
+            if self._is_actor:
+                try:
+                    loop.run_until_complete(self.trainer_mode())
+                    log_gpu_memory_usage("After switch to trainer mode", logger=logger)
+                except BaseException:
+                    logger.exception("Failed to restore trainer mode after rollout generation failed")
+            raise
 
         if self._is_actor:
             loop.run_until_complete(self.trainer_mode())
