@@ -120,7 +120,7 @@ class NaiveRouter:
             ttl_dns_cache=300,
             use_dns_cache=True,
         )
-        timeout = aiohttp.ClientTimeout(total=None)
+        timeout = aiohttp.ClientTimeout(total=self.timeout)
         self.client = aiohttp.ClientSession(connector=connector, timeout=timeout)
         if self.verbose:
             logger.info(f"[router] aiohttp client initialized with max_connections={self.max_connections}")
