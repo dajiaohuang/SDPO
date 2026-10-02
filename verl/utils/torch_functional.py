@@ -1009,11 +1009,15 @@ def use_original_torch_compile():
                 if patch.is_applied():
                     compile_patch = patch
                 break
-        if compile_patch is not None:
-            compile_patch.remove_patch()
-            yield
-            compile_patch.apply_patch()
-        else:
-            yield
     except Exception:
+        compile_patch = None
+
+    if compile_patch is None:
         yield
+        return
+
+    compile_patch.remove_patch()
+    try:
+        yield
+    finally:
+        compile_patch.apply_patch()
