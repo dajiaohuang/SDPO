@@ -57,7 +57,7 @@ class RobDataParallelPPOActor(BasePPOActor):
     def process_tensor(self, tensor, pad_id):
         mask = tensor != pad_id
         if not torch.all(mask == mask[0:1], dim=1).all():
-            raise ValueError("Padding error!")
+            return tensor, mask.sum(dim=1).max().item()
         base_mask = mask[0]
         valid_len = base_mask.sum().item()
         return tensor[:, base_mask], valid_len
