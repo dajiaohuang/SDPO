@@ -1,4 +1,5 @@
 set -x
+set -eo pipefail
 
 MODEL_PATH="/workspace/models/Qwen3-8B"
 TRAIN_FILE="/workspace/datasets/preprocessed/gsm8k/train.parquet"
