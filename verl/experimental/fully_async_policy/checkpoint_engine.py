@@ -447,6 +447,12 @@ class CheckpointEngine:
 
         if overlap_broadcast_and_consume:
             socket, socket_path = self._bind_zmq_socket()
+            ipc_errors = []
+            helper_errors: list[Exception] = []
+
+            def receive_ipc_ack():
+                if socket.recv():
+                    ipc_errors.append(True)
 
             # Define a function to update weights from IPC
             def update_weights_from_ipc_(socket_path):
@@ -460,14 +466,22 @@ class CheckpointEngine:
                     payload: tuple[Callable, tuple] | list[FlattenedTensorMetadata] | None = socket.recv_pyobj()
                     if payload is None:
                         # means the update is done
-                        get_torch_device().synchronize()
-                        socket.send(b"")
+                        try:
+                            get_torch_device().synchronize()
+                        except Exception as exc:
+                            if not helper_errors:
+                                helper_errors.append(exc)
+                        socket.send(b"error" if helper_errors else b"")
                         break
-                    assert isinstance(payload, list)
-                    if inference_model is not None:
-                        inference_model.load_weights(_extract_weights(payload, broadcast_load_buffer))
-                    get_torch_device().synchronize()
-                    socket.send(b"")
+                    try:
+                        assert isinstance(payload, list)
+                        if inference_model is not None and not helper_errors:
+                            inference_model.load_weights(_extract_weights(payload, broadcast_load_buffer))
+                        get_torch_device().synchronize()
+                    except Exception as exc:
+                        if not helper_errors:
+                            helper_errors.append(exc)
+                    socket.send(b"error" if helper_errors else b"")
 
             req_thread = threading.Thread(
                 target=update_weights_from_ipc_,
@@ -501,7 +515,7 @@ class CheckpointEngine:
                 collective.broadcast(buffer_b, src_rank=broadcast_rank, group_name=group_name)
 
                 if overlap_broadcast_and_consume:
-                    socket.recv()
+                    receive_ipc_ack()
                     collective.barrier(group_name=group_name)
                     socket.send_pyobj(_to_flattened_tensor_meta(bucket.metas, start))
                 elif inference_model is not None:
@@ -511,12 +525,15 @@ class CheckpointEngine:
                 gidx += 1
 
         if overlap_broadcast_and_consume:
-            socket.recv()
+            receive_ipc_ack()
             socket.send_pyobj(None)
-            socket.recv()
+            receive_ipc_ack()
             req_thread.join()
             socket.close()
 
         collective.barrier(group_name=group_name)
         # clear host memory cache
         self.memory_buffers = []
+        if overlap_broadcast_and_consume and ipc_errors:
+            error = helper_errors[0] if helper_errors else RuntimeError("Weight-loading helper failed")
+            raise RuntimeError("Failed to load checkpoint weights in overlap mode") from error
