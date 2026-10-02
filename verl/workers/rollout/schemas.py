@@ -658,6 +658,12 @@ class AsyncRolloutRequest(BaseModel):
     def truncate_output_ids(
         self, processing_class: PreTrainedTokenizer | PreTrainedTokenizerFast | ProcessorMixin
     ) -> None:
+        if self.input_ids.shape[-1] > self.max_model_len and self.multi_modal_inputs:
+            raise ValueError(
+                "Cannot truncate an overlength multimodal rollout because its visual inputs would no longer "
+                "align with the retained token sequence."
+            )
+
         self.input_ids = self.input_ids[..., : self.max_model_len]
         self.attention_mask = self.attention_mask[..., : self.max_model_len]
         self.position_ids = self.position_ids[..., : self.max_model_len]
