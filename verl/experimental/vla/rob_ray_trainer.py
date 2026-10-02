@@ -95,7 +95,12 @@ def flatten_trajectories(data: DataProto) -> DataProto:
             new_batch_fields[key] = tensor.repeat_interleave(num_steps)
         else:
             new_batch_fields[key] = tensor
-    new_data = DataProto.from_dict(tensors=new_batch_fields, meta_info=data.meta_info)
+    new_non_tensor_fields = {
+        key: np.repeat(value, num_steps, axis=0) for key, value in data.non_tensor_batch.items()
+    }
+    new_data = DataProto.from_dict(
+        tensors=new_batch_fields, non_tensors=new_non_tensor_fields, meta_info=data.meta_info
+    )
     return new_data
 
 

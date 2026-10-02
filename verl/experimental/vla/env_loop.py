@@ -136,7 +136,12 @@ class EnvLoop:
         await asyncio.gather(*[asyncio.create_task(_stage_loop(sid)) for sid in range(self.stage_num)])
         self.env_wg.finish_rollout()
 
-        return self._collate_trajectories(trajectories, initial_state_ids, meta_info=prompts.meta_info)
+        return self._collate_trajectories(
+            trajectories,
+            initial_state_ids,
+            meta_info=prompts.meta_info,
+            non_tensor_batch=prompts.non_tensor_batch,
+        )
 
     def _restructure_obs_data(self, data_proto: DataProto) -> list[DataProto]:
         """Reshapes flat observation data from env_wg into a list of per-stage DataProto objects."""
@@ -156,7 +161,9 @@ class EnvLoop:
         # Concatenate data from all workers for each stage
         return [DataProto.concat(data_list) for data_list in staged_data]
 
-    def _collate_trajectories(self, trajectories: dict, initial_state_ids: np.ndarray, meta_info) -> DataProto:
+    def _collate_trajectories(
+        self, trajectories: dict, initial_state_ids: np.ndarray, meta_info, non_tensor_batch: dict
+    ) -> DataProto:
         """
         Collates the collected trajectory data into the final batch format.
         """
@@ -196,4 +203,4 @@ class EnvLoop:
             "env_state_id": torch.from_numpy(initial_state_ids.astype(int)),
         }
 
-        return DataProto.from_single_dict(batch_dict, meta_info=meta_info)
+        return DataProto.from_dict(tensors=batch_dict, non_tensors=non_tensor_batch, meta_info=meta_info)
