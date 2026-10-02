@@ -211,16 +211,20 @@ def load_quanted_weights(weights, model_runner):
 
     # Monkey patch the param class to their subclass, as certain models
     # will check the param type to call the proper weightloader
-    for name, param in model.named_parameters():
-        if hasattr(param, "subclass_type"):
-            param.orig_type = param.__class__
-            param.__class__ = param.subclass_type
-    # Finally load the weights into vllm
-    loaded_params = model.load_weights(weights_quantized)
-    # Undo the type change above to the original type
-    for name, param in model.named_parameters():
-        if hasattr(param, "subclass_type"):
-            param.__class__ = param.orig_type
+    patched_params = []
+    try:
+        for name, param in model.named_parameters():
+            if hasattr(param, "subclass_type"):
+                original_type = param.__class__
+                patched_params.append((param, original_type))
+                param.orig_type = original_type
+                param.__class__ = param.subclass_type
+        # Finally load the weights into vllm
+        loaded_params = model.load_weights(weights_quantized)
+    finally:
+        # Restore even when weight loading fails so a later retry starts cleanly.
+        for param, original_type in patched_params:
+            param.__class__ = original_type
     return loaded_params
 
 
