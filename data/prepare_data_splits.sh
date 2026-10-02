@@ -20,48 +20,52 @@ if [ ! -f "$DATA_PATH" ]; then
     exit 1
 fi
 
-# Create EASY_DATA_PATH in the same directory as DATA_PATH with filename lcb_easy.json
+# Preserve the optional easy subset pass when a sibling lcb_easy.json is available.
 EASY_DATA_PATH="$(dirname "$DATA_PATH")/lcb_easy.json"
 echo "Derived EASY_DATA_PATH: $EASY_DATA_PATH"
 
-# Create my_data_easy folder if it doesn't exist
-MY_DATA_EASY_DIR="${MY_DATA_EASY_DIR:-my_data_easy}"
-echo "Creating directory: $MY_DATA_EASY_DIR"
-mkdir -p "$MY_DATA_EASY_DIR"
+if [ -f "$EASY_DATA_PATH" ]; then
+    # Create my_data_easy folder if it doesn't exist
+    MY_DATA_EASY_DIR="${MY_DATA_EASY_DIR:-my_data_easy}"
+    echo "Creating directory: $MY_DATA_EASY_DIR"
+    mkdir -p "$MY_DATA_EASY_DIR"
 
-# Define file paths for train.json and test.json
-TRAIN_FILE_PATH="$MY_DATA_EASY_DIR/train.json"
-TEST_FILE_PATH="$MY_DATA_EASY_DIR/test.json"
+    # Define file paths for train.json and test.json
+    TRAIN_FILE_PATH="$MY_DATA_EASY_DIR/train.json"
+    TEST_FILE_PATH="$MY_DATA_EASY_DIR/test.json"
 
-# Copy the original file to both train.json and test.json
-echo "Copying $EASY_DATA_PATH to $TRAIN_FILE_PATH"
-cp "$EASY_DATA_PATH" "$TRAIN_FILE_PATH"
+    # Copy the easy subset to train.json and test.json.
+    echo "Copying $EASY_DATA_PATH to $TRAIN_FILE_PATH"
+    cp "$EASY_DATA_PATH" "$TRAIN_FILE_PATH"
 
-echo "Copying $EASY_DATA_PATH to $TEST_FILE_PATH"
-cp "$EASY_DATA_PATH" "$TEST_FILE_PATH"
+    echo "Copying $EASY_DATA_PATH to $TEST_FILE_PATH"
+    cp "$EASY_DATA_PATH" "$TEST_FILE_PATH"
 
-# Check if the copies were successful
-if [ ! -f "$TRAIN_FILE_PATH" ]; then
-    echo "Error: Failed to create $TRAIN_FILE_PATH"
-    exit 1
+    # Check if the copies were successful
+    if [ ! -f "$TRAIN_FILE_PATH" ]; then
+        echo "Error: Failed to create $TRAIN_FILE_PATH"
+        exit 1
+    fi
+
+    if [ ! -f "$TEST_FILE_PATH" ]; then
+        echo "Error: Failed to create $TEST_FILE_PATH"
+        exit 1
+    fi
+
+    echo "Successfully created copies:"
+    echo "  - $TRAIN_FILE_PATH"
+    echo "  - $TEST_FILE_PATH"
+
+    # Run split_tests.main on the train.json file
+    echo "Running split_tests on $TRAIN_FILE_PATH"
+    python data/split_tests.py --json_path "$TRAIN_FILE_PATH" --output_dir "$MY_DATA_EASY_DIR"
+
+    # Run preprocessing on the my_data_easy folder
+    echo "Running preprocessing on my_data_easy folder"
+    python data/preprocess.py --data_source "$MY_DATA_EASY_DIR"
+else
+    echo "No sibling lcb_easy.json found; skipping the optional easy subset."
 fi
-
-if [ ! -f "$TEST_FILE_PATH" ]; then
-    echo "Error: Failed to create $TEST_FILE_PATH"
-    exit 1
-fi
-
-echo "Successfully created copies:"
-echo "  - $TRAIN_FILE_PATH"
-echo "  - $TEST_FILE_PATH"
-
-# Run split_tests.main on the train.json file
-echo "Running split_tests on $TRAIN_FILE_PATH"
-python data/split_tests.py --json_path "$TRAIN_FILE_PATH" --output_dir "$MY_DATA_EASY_DIR"
-
-# Run preprocessing on the my_data_easy folder
-echo "Running preprocessing on my_data_easy folder"
-python data/preprocess.py --data_source "$MY_DATA_EASY_DIR"
 
 # Create my_data_splits folder if it doesn't exist
 MY_DATA_SPLITS_DIR="${MY_DATA_SPLITS_DIR:-my_data_splits}"
