@@ -603,9 +603,19 @@ class FullyAsyncTrainer(FullyAsyncRayPPOTrainer):
 
             timing_raw = {}
             await self.async_rollout_manager.wake_up()
-            with marked_timer("trainer/validate_time", timing_raw):
-                self.train_val_metrics = self._validate(True)
-            await self.async_rollout_manager.sleep()
+            try:
+                with marked_timer("trainer/validate_time", timing_raw):
+                    self.train_val_metrics = self._validate(True)
+            except BaseException:
+                try:
+                    await self.async_rollout_manager.sleep()
+                except BaseException as cleanup_error:
+                    print(
+                        f"[FullyAsyncTrainer] Failed to sleep rollout manager after validation error: {cleanup_error}"
+                    )
+                raise
+            else:
+                await self.async_rollout_manager.sleep()
             print(f"[FullyAsyncTrainer] validate timing_raw validate: {timing_raw['trainer/validate_time']}")
         else:
             self.train_val_metrics = None
