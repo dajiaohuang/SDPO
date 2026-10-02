@@ -93,7 +93,10 @@ class ParallelLlamaModel(nn.Module):
         )
 
         self.layers = nn.ModuleList(
-            [ParallelLlamaDecoderLayer(config, megatron_config) for _ in range(config.num_hidden_layers)]
+            [
+                ParallelLlamaDecoderLayer(config, megatron_config, layer_idx=layer_idx)
+                for layer_idx in range(config.num_hidden_layers)
+            ]
         )
         self.norm = ParallelLlamaRMSNorm(config, megatron_config)
 
@@ -243,7 +246,10 @@ class ParallelLlamaModelRmPad(nn.Module):
         )
 
         self.layers = nn.ModuleList(
-            [ParallelLlamaDecoderLayerRmPad(config, megatron_config) for _ in range(config.num_hidden_layers)]
+            [
+                ParallelLlamaDecoderLayerRmPad(config, megatron_config, layer_idx=layer_idx)
+                for layer_idx in range(config.num_hidden_layers)
+            ]
         )
         self.norm = ParallelLlamaRMSNorm(config, megatron_config)
 

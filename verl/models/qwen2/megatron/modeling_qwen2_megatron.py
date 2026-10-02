@@ -94,7 +94,10 @@ class ParallelQwen2Model(nn.Module):
         )
 
         self.layers = nn.ModuleList(
-            [ParallelQwen2DecoderLayer(config, megatron_config) for _ in range(config.num_hidden_layers)]
+            [
+                ParallelQwen2DecoderLayer(config, megatron_config, layer_idx=layer_idx)
+                for layer_idx in range(config.num_hidden_layers)
+            ]
         )
         self.norm = ParallelQwen2RMSNorm(config, megatron_config)
 
@@ -244,7 +247,10 @@ class ParallelQwen2ModelRmPad(nn.Module):
         )
 
         self.layers = nn.ModuleList(
-            [ParallelQwen2DecoderLayerRmPad(config, megatron_config) for _ in range(config.num_hidden_layers)]
+            [
+                ParallelQwen2DecoderLayerRmPad(config, megatron_config, layer_idx=layer_idx)
+                for layer_idx in range(config.num_hidden_layers)
+            ]
         )
         self.norm = ParallelQwen2RMSNorm(config, megatron_config)
 
