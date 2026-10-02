@@ -256,8 +256,15 @@ def compute_rollout_rejection_mask(
                 raise ValueError(
                     f"rollout_rs_threshold for option '{option_name}' must specify both lower and upper bounds."
                 )
-            lower_log = math.log(lower_value)
-            upper_log = math.log(upper_value)
+            if lower_value > upper_value:
+                raise ValueError(
+                    f"Lower ratio bound must not exceed upper ratio bound for option '{option_name}', "
+                    f"got {lower_value}_{upper_value}."
+                )
+            # K1 is -log(r), so ratio bounds [lower, upper] map to
+            # [-log(upper), -log(lower)].
+            lower_log = -math.log(upper_value)
+            upper_log = -math.log(lower_value)
         else:
             if upper_value is None:
                 raise ValueError(f"rollout_rs_threshold for option '{option_name}' must specify an upper bound.")
