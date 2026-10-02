@@ -35,6 +35,10 @@ logger.setLevel(os.getenv("VERL_LOGGING_LEVEL", "WARN"))
 T = TypeVar("T")
 
 
+def _crop_image(image, bbox):
+    return image.crop(bbox)
+
+
 # Adapted from verl/tools/sandbox_fusion_tools.py
 class PoolMode(Enum):
     """Execution pool mode enumeration."""
@@ -334,7 +338,9 @@ class ImageZoomInTool(BaseTool):
         if image is None:
             raise ValueError("Missing required 'image' parameter in kwargs")
 
-        img = fetch_image({"image": image})
+        img = await self.execution_pool.execute.remote(fetch_image, {"image": image})
+        if img is None:
+            raise RuntimeError("Image fetch failed")
         self._instance_dict[instance_id] = {
             "image": img,
             "response": "",
@@ -368,7 +374,9 @@ class ImageZoomInTool(BaseTool):
                 logger.warning(f"Tool execution failed: {error_msg}")
                 return ToolResponse(text=error_msg), -0.05, {"success": False}
 
-            cropped_image = image.crop(resized_bbox)
+            cropped_image = await self.execution_pool.execute.remote(_crop_image, image, resized_bbox)
+            if cropped_image is None:
+                raise RuntimeError("Image crop failed")
             logger.info(f"Cropped image size: {cropped_image.size}")
         except Exception as e:
             logger.error(f"Error processing image zoom-in: {e}")
