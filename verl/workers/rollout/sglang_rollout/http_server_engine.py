@@ -530,7 +530,7 @@ class HttpServerAdapter(EngineBase):
             time.sleep(self.retry_delay)
 
         logger.error("Failed to flush cache after maximum attempts")
-        return {}
+        raise RuntimeError(f"Failed to flush cache after {self.max_attempts * 2} attempts")
 
     def release_memory_occupation(self, tags: Optional[list[str]] = None) -> dict[str, Any]:
         """Release GPU memory occupation temporarily.
@@ -807,7 +807,7 @@ class AsyncHttpServerAdapter(HttpServerAdapter):
             await asyncio.sleep(self.retry_delay)
 
         logger.error("Failed to flush cache after maximum attempts")
-        return {}
+        raise RuntimeError(f"Failed to flush cache after {self.max_attempts * 4} attempts")
 
     async def generate(
         self,

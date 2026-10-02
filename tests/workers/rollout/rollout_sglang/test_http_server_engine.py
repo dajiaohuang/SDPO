@@ -866,8 +866,33 @@ class TestErrorRecovery:
             mock_get.side_effect = requests.exceptions.ConnectionError()
 
             with patch("time.sleep"):
-                result = adapter.flush_cache()
-                assert result == {}  # Should return empty dict on failure
+                with pytest.raises(RuntimeError, match="Failed to flush cache after 2 attempts"):
+                    adapter.flush_cache()
+                assert mock_get.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_async_flush_cache_max_attempts(self, mock_launch_server_process, basic_adapter_kwargs):
+        """Test async flush cache raises after exhausting retries."""
+        adapter = AsyncHttpServerAdapter(max_attempts=1, **basic_adapter_kwargs)
+
+        mock_response = AsyncMock()
+        mock_response.status = 503
+        mock_get_context_manager = AsyncMock()
+        mock_get_context_manager.__aenter__.return_value = mock_response
+
+        mock_session = AsyncMock(spec=aiohttp.ClientSession)
+        mock_session.closed = False
+        mock_session.get.return_value = mock_get_context_manager
+
+        mock_session_cm = AsyncMock()
+        mock_session_cm.__aenter__.return_value = mock_session
+
+        with patch.object(adapter, "_get_session", return_value=mock_session_cm):
+            with patch("asyncio.sleep", new_callable=AsyncMock):
+                with pytest.raises(RuntimeError, match="Failed to flush cache after 4 attempts"):
+                    await adapter.flush_cache()
+
+        assert mock_session.get.call_count == 4
 
     def test_network_partition_recovery(self, mock_launch_server_process, basic_adapter_kwargs):
         """Test recovery from network partition scenarios."""
