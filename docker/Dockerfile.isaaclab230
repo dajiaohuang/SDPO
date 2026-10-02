@@ -43,11 +43,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 
 RUN --mount=type=cache,target=/root/.cache/pip \
     /workspace/isaaclab/_isaac_sim/python.sh -m pip install --upgrade numpy==1.26.4 ray[default] \
-    accelerate codetiming datasets dill hydra-core pandas peft pyarrow>=19.0.0 pybind11 pylatexenc
+    accelerate codetiming datasets dill hydra-core pandas peft "pyarrow>=19.0.0" pybind11 pylatexenc
 
 # openvla-oft
 RUN --mount=type=cache,target=/root/.cache/pip \
-    /workspace/isaaclab/_isaac_sim/python.sh -m pip install pre-commit torchdata packaging>=20.0 uvicorn fastapi latex2sympy2_extended math_verify tensorboard
+    /workspace/isaaclab/_isaac_sim/python.sh -m pip install pre-commit torchdata "packaging>=20.0" uvicorn fastapi latex2sympy2_extended math_verify tensorboard
 
 
 # flash_attn

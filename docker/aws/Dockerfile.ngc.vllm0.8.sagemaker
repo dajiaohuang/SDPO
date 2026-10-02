@@ -25,8 +25,8 @@ RUN apt-get update && \
 
 # Install torch-2.6.0 + vllm-0.8.2
 RUN pip install --no-cache-dir vllm==0.8.2 torch==2.6.0 torchvision==0.21.0 torchaudio==2.6.0 tensordict torchdata==0.11.0 \
-    transformers>=4.49.0 accelerate datasets peft hf-transfer \
-    ray[default] codetiming hydra-core pandas pyarrow>=15.0.0 pylatexenc qwen-vl-utils wandb dill pybind11 liger-kernel mathruler \
+    "transformers>=4.49.0" accelerate datasets peft hf-transfer \
+    ray[default] codetiming hydra-core pandas "pyarrow>=15.0.0" pylatexenc qwen-vl-utils wandb dill pybind11 liger-kernel mathruler \
     pytest pre-commit py-spy pyext ruff tensorboard
 
 # Install flash_attn-2.7.4.post1
@@ -35,8 +35,8 @@ RUN pip uninstall -y transformer-engine flash-attn && \
 
 # Fix cv2
 RUN pip uninstall -y pynvml nvidia-ml-py && \
-    pip install --no-cache-dir nvidia-ml-py>=12.560.30 opencv-python-headless==4.8.0.74 fastapi==0.115.6 && \
-    pip install --no-cache-dir --upgrade optree>=0.13.0
+    pip install --no-cache-dir "nvidia-ml-py>=12.560.30" opencv-python-headless==4.8.0.74 fastapi==0.115.6 && \
+    pip install --no-cache-dir --upgrade "optree>=0.13.0"
 
 # Install verl
 RUN pip install --no-cache-dir verl[vllm] -U
