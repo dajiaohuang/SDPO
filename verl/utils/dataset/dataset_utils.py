@@ -65,7 +65,7 @@ class SFTTensorCollator:
 
         # Handle tensor values by creating a NestedTensor.
         for key in tensor_keys:
-            if isinstance(batch[0][key], torch.Tensor):
+            if all(key in item and isinstance(item[key], torch.Tensor) for item in batch):
                 tensors = [item[key] for item in batch]
                 final_batch[key] = torch.nested.as_nested_tensor(tensors, layout=torch.jagged)
             else:
