@@ -28,7 +28,7 @@ from torch import nn
 from verl import DataProto
 from verl.utils.torch_functional import logprobs_from_logits
 
-from ..base import BaseRollout
+from ..base import BaseRollout, _preserve_module_training_modes
 
 __all__ = ["NaiveRollout"]
 
@@ -47,6 +47,7 @@ class NaiveRollout(BaseRollout):
         self.config = config
         self.module = module
 
+    @_preserve_module_training_modes
     @torch.no_grad()
     def generate_sequences(self, prompts: DataProto) -> DataProto:
         """Generate sequences"""
@@ -114,7 +115,5 @@ class NaiveRollout(BaseRollout):
             },
             batch_size=batch_size,
         )
-
-        self.module.train()
 
         return DataProto(batch=batch)

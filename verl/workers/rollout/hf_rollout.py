@@ -31,7 +31,7 @@ from verl import DataProto
 from verl.utils.device import get_device_name, get_torch_device
 from verl.utils.torch_functional import get_response_mask
 
-from .base import BaseRollout
+from .base import BaseRollout, _preserve_module_training_modes
 
 __all__ = ["HFRollout"]
 
@@ -50,6 +50,7 @@ class HFRollout(BaseRollout):
         output = DataProto.concat(output)
         return output
 
+    @_preserve_module_training_modes
     @torch.no_grad()
     def _generate_minibatch(self, prompts: DataProto) -> DataProto:
         # make sampling args can be overridden by inputs
@@ -173,5 +174,4 @@ class HFRollout(BaseRollout):
         # empty cache before compute old_log_prob
         get_torch_device().empty_cache()
 
-        self.module.train()
         return DataProto(batch=batch)

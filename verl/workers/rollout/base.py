@@ -14,6 +14,7 @@
 
 import importlib
 from abc import ABC, abstractmethod
+from functools import wraps
 from typing import Generator
 
 import torch
@@ -24,6 +25,21 @@ from verl.utils.config import omega_conf_to_dataclass
 from verl.workers.config import HFModelConfig, RolloutConfig
 
 __all__ = ["BaseRollout"]
+
+
+def _preserve_module_training_modes(method):
+    """Restore a rollout module's per-submodule modes even when generation fails."""
+
+    @wraps(method)
+    def wrapped(self, *args, **kwargs):
+        module_modes = [(module, module.training) for module in self.module.modules()]
+        try:
+            return method(self, *args, **kwargs)
+        finally:
+            for module, training in module_modes:
+                module.training = training
+
+    return wrapped
 
 
 class BaseRollout(ABC):
