@@ -64,6 +64,7 @@ class AgentData:
         request_id: str,
         tools_kwargs: dict[str, Any],
         interaction: Optional[BaseInteraction] = None,
+        interaction_instance_id: Optional[str] = None,
         interaction_kwargs: Optional[dict[str, Any]] = None,
     ):
         self.messages = messages
@@ -73,6 +74,7 @@ class AgentData:
         self.request_id = request_id
         self.tools_kwargs = tools_kwargs
         self.interaction = interaction
+        self.interaction_instance_id = interaction_instance_id
         self.interaction_kwargs = interaction_kwargs or {}
 
         # State variables
@@ -145,6 +147,8 @@ class ToolAgentLoop(AgentLoopBase):
 
         # Initialize interaction if needed
         interaction = None
+        interaction_instance_id = None
+        interaction_started = False
         interaction_kwargs = {}
         if self.interaction_config_file:
             interaction_kwargs = kwargs["extra_info"]["interaction_kwargs"]
@@ -157,7 +161,8 @@ class ToolAgentLoop(AgentLoopBase):
                     f"{list(self.interaction_map.keys())}"
                 )
             interaction = self.interaction_map[interaction_name]
-            await interaction.start_interaction(request_id, **interaction_kwargs)
+            interaction_instance_id = await interaction.start_interaction(request_id, **interaction_kwargs)
+            interaction_started = True
         # Create AgentData instance to encapsulate all state
         agent_data = AgentData(
             messages=messages,
@@ -167,23 +172,35 @@ class ToolAgentLoop(AgentLoopBase):
             request_id=request_id,
             tools_kwargs=tools_kwargs,
             interaction=interaction,
+            interaction_instance_id=interaction_instance_id,
             interaction_kwargs=interaction_kwargs,
         )
 
         # State machine loop
         state = AgentState.PENDING
-        while state != AgentState.TERMINATED:
-            if state == AgentState.PENDING:
-                state = await self._handle_pending_state(agent_data, sampling_params)
-            elif state == AgentState.GENERATING:
-                state = await self._handle_generating_state(agent_data, sampling_params)
-            elif state == AgentState.PROCESSING_TOOLS:
-                state = await self._handle_processing_tools_state(agent_data)
-            elif state == AgentState.INTERACTING:
-                state = await self._handle_interacting_state(agent_data)
-            else:
-                logger.error(f"Invalid state: {state}")
-                state = AgentState.TERMINATED
+        try:
+            while state != AgentState.TERMINATED:
+                if state == AgentState.PENDING:
+                    state = await self._handle_pending_state(agent_data, sampling_params)
+                elif state == AgentState.GENERATING:
+                    state = await self._handle_generating_state(agent_data, sampling_params)
+                elif state == AgentState.PROCESSING_TOOLS:
+                    state = await self._handle_processing_tools_state(agent_data)
+                elif state == AgentState.INTERACTING:
+                    state = await self._handle_interacting_state(agent_data)
+                else:
+                    logger.error(f"Invalid state: {state}")
+                    state = AgentState.TERMINATED
+        except BaseException:
+            if interaction_started:
+                try:
+                    await interaction.finalize_interaction(interaction_instance_id, **interaction_kwargs)
+                except Exception:
+                    logger.exception("Failed to finalize interaction while preserving the rollout error")
+            raise
+
+        if interaction_started:
+            await interaction.finalize_interaction(interaction_instance_id, **interaction_kwargs)
 
         # Finalize output
         response_ids = agent_data.prompt_ids[-len(agent_data.response_mask) :]
@@ -378,7 +395,7 @@ class ToolAgentLoop(AgentLoopBase):
             reward,
             metrics,
         ) = await agent_data.interaction.generate_response(
-            agent_data.request_id, agent_data.messages, **agent_data.interaction_kwargs
+            agent_data.interaction_instance_id, agent_data.messages, **agent_data.interaction_kwargs
         )
         agent_data.user_turns += 1
 

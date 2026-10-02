@@ -63,7 +63,7 @@ class BaseInteraction:
         score = 0.0
         return score
 
-    async def finalize_interaction(self) -> None:  # More clear interaction end and resource release method
+    async def finalize_interaction(self, instance_id: Optional[str] = None, **kwargs) -> None:
         """
         Finalizes the interaction session and releases any associated state or resources.
         Simulates: release state
