@@ -39,11 +39,11 @@ class PrecisionType:
 
     @staticmethod
     def supported_type(precision: str | int) -> bool:
-        return any(x == precision for x in PrecisionType)
+        return str(precision) in PrecisionType.supported_types()
 
     @staticmethod
     def supported_types() -> list[str]:
-        return [x.value for x in PrecisionType]
+        return [PrecisionType.HALF, PrecisionType.FLOAT, PrecisionType.FULL, PrecisionType.BFLOAT, PrecisionType.MIXED]
 
     @staticmethod
     def is_fp16(precision):
