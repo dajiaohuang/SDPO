@@ -23,11 +23,11 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Optional
 
-import datasets
 from omegaconf import DictConfig
 from torch.utils.data import Dataset
 from transformers import PreTrainedTokenizer, ProcessorMixin
 
+import datasets
 from verl import DataProto
 from verl.utils.dataset import RLHFDataset
 from verl.utils.import_utils import load_extern_object
@@ -103,7 +103,7 @@ class DynamicGenDataset(RLHFDataset):
 
         logger.info(f"new dataset len: {len(self.dataframe)}")
 
-    def on_batch_end(self, batch: DataProto) -> None:
+    def on_batch_end(self, batch: Optional[DataProto] = None) -> None:
         """
         Generate data using the provided data generation strategy.
         Note: This method is intended to change the dataset after each training batch.
