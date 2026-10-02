@@ -3,7 +3,8 @@ set -x
 python3 -m verl.trainer.main_ppo \
     algorithm.adv_estimator=gae \
     algorithm.use_pf_ppo=True \
-    algorithm.pf_ppo.reweight_method=pow \  # ["pow", "max_min", "max_random"]
+    # Reweighting methods: pow, max_min, max_random.
+    algorithm.pf_ppo.reweight_method=pow \
     algorithm.pf_ppo.weight_pow=2.0 \
     data.train_files=$HOME/data/gsm8k/train.parquet \
     data.val_files=$HOME/data/gsm8k/test.parquet \
