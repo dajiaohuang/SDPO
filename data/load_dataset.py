@@ -28,6 +28,7 @@ def load_dataset_hf(
     num_el: int = None,
     category: str | None = None,
     embeddings_file: str | None = None,
+    seed: int = 42,
 ) -> Dataset:
 
     final_columns = ["idx", "kind", "dataset", "answer", "elo", "prompt", "description", "tests", "embedding", "system"]
@@ -38,7 +39,7 @@ def load_dataset_hf(
     if dataset_name == "lasgroup/verifiable-corpus":
         ds = load_train(category)
     elif dataset_name == "Idavidrein/gpqa-D":
-        ds = load_gpqa(category)
+        ds = load_gpqa(category, seed=seed)
     elif dataset_name == "TIGER-Lab/MMLU-Pro":
         ds = load_mmlu_pro(category, implementation="evalchemy")
     elif dataset_name in ["math-ai/aime24", "math-ai/aime25", "math-ai/math500", "math-ai/amc23", "openai/gsm8k"]:
@@ -152,4 +153,5 @@ if __name__ == "__main__":
         num_el=args.num_el,
         category=args.category,
         embeddings_file=args.embeddings_file,
+        seed=args.seed,
     )

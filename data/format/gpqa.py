@@ -7,7 +7,7 @@ Options: {options}
 Answer:"""
 
 
-def _generate_multiple_choice_answers_gpqa(data) -> tuple[str, str]:
+def _generate_multiple_choice_answers_gpqa(data, rng: random.Random) -> tuple[str, str]:
     """Generate multiple choice string and correct answer letter."""
     answers = [
         data["Correct Answer"],
@@ -15,9 +15,7 @@ def _generate_multiple_choice_answers_gpqa(data) -> tuple[str, str]:
         data["Incorrect Answer 2"],
         data["Incorrect Answer 3"],
     ]
-    # rnd = random.Random(42)
-    # rnd.shuffle(answers)
-    random.shuffle(answers)  # Actual shuffle now
+    rng.shuffle(answers)
 
     options = ["A", "B", "C", "D"]
     options_to_answers = {letter: answer for letter, answer in zip(options, answers)}
@@ -29,8 +27,9 @@ def _generate_multiple_choice_answers_gpqa(data) -> tuple[str, str]:
     return multiple_choice_string, correct_answer_letter
 
 
-def _format_gpqa(example) -> dict:
-    multiple_choice_string, answer = _generate_multiple_choice_answers_gpqa(example)
+def _format_gpqa(example, idx: int, seed: int) -> dict:
+    rng = random.Random(seed + idx)
+    multiple_choice_string, answer = _generate_multiple_choice_answers_gpqa(example, rng)
     return {
         "kind": "gpqa",
         "dataset": "gpqa",
@@ -41,8 +40,8 @@ def _format_gpqa(example) -> dict:
     }
 
 
-def load_gpqa(category: str = None) -> Dataset:
+def load_gpqa(category: str = None, seed: int = 42) -> Dataset:
     ds = load_dataset("Idavidrein/gpqa", "gpqa_diamond", split="train")
     if category is not None: # Physics, Chemistry, Biology
         ds = ds.filter(lambda ex: ex["High-level domain"] == category)
-    return ds.map(_format_gpqa, remove_columns=ds.column_names)
+    return ds.map(_format_gpqa, with_indices=True, fn_kwargs={"seed": seed}, remove_columns=ds.column_names)
