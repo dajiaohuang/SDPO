@@ -61,7 +61,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     random.seed(42)
     np.random.seed(42)
-    task_suite = get_benchmark("libero_10")()
+    task_suite = get_benchmark(args.task_suite_name)()
     total_num_group_envs, cumsum_trial_id_bins = compute_total_num_group_envs(task_suite)
     print(f"Total number of group envs: {total_num_group_envs}")
     print(f"Cumsum trial id bins: {cumsum_trial_id_bins}")
