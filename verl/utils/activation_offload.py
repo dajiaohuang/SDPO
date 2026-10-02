@@ -431,7 +431,7 @@ class ActivationHandler:
             self._tensor_filter.update_model_parameters(module)
 
     def post_forward(self, module):
-        if module.training:
+        if self._offload_ctx.inside_context:
             self._offload_ctx.__exit__(None, None, None)
 
     def _pack_kwargs(self, *args, **kwargs):
@@ -489,10 +489,11 @@ class ActivationHandler:
         @functools.wraps(orig_method)
         def wrapped_method(model_self, *args, **kwargs):
             nonlocal handler
-            handler.pre_forward(model_self)
-            out = handler.forward(model_self, orig_method, *args, **kwargs)
-            handler.post_forward(model_self)
-            return out
+            try:
+                handler.pre_forward(model_self)
+                return handler.forward(model_self, orig_method, *args, **kwargs)
+            finally:
+                handler.post_forward(model_self)
 
         module.forward = wrapped_method.__get__(module, type(module))
 
