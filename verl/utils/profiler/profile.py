@@ -267,10 +267,10 @@ class DistProfiler:
                         actual_decorator = impl.annotate(
                             message=message, color=color, domain=domain, category=category, **kwargs_outer
                         )
-
-                        return actual_decorator(func)(self_instance, *args, **kwargs_inner)
+                        profiled_func = actual_decorator(func)
                     except Exception:
                         return func(self_instance, *args, **kwargs_inner)
+                    return profiled_func(self_instance, *args, **kwargs_inner)
                 return func(self_instance, *args, **kwargs_inner)
 
             return wrapper
