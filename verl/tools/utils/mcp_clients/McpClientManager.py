@@ -66,17 +66,21 @@ class MCPClientManager:
 
     async def fetch_tool_schemas(self, tool_selected_list: list[str]) -> list[dict]:
         tool_schemas = []
+        tool_client_mapping = {}
         for client in self.clients:
             async with client:
                 tools = await client.list_tools_mcp()
                 for tool in tools.tools:
-                    if not tool_selected_list:
-                        self.tool_client_mapping[tool.name] = client
-                        tool_schemas.append(mcp2openai(tool))
-                    elif tool.name in tool_selected_list:
-                        self.tool_client_mapping[tool.name] = client
+                    if not tool_selected_list or tool.name in tool_selected_list:
+                        if tool.name in tool_client_mapping:
+                            raise ValueError(
+                                f"Duplicate MCP tool name {tool.name!r} exposed by multiple configured servers; "
+                                "tool names must be unique"
+                            )
+                        tool_client_mapping[tool.name] = client
                         tool_schemas.append(mcp2openai(tool))
 
+        self.tool_client_mapping.update(tool_client_mapping)
         return tool_schemas
 
     def get_client_with_tool_name(self, tool_name: str):
