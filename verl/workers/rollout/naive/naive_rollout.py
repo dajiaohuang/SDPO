@@ -89,9 +89,8 @@ class NaiveRollout(BaseRollout):
 
             attention_mask = torch.cat((attention_mask, prev_attention_mask), dim=-1)
 
-            for token_id in eos_token_id:
-                prev_attention_mask = torch.logical_and(idx_next != token_id, prev_attention_mask.bool())
-            prev_attention_mask.to(attention_mask.dtype)
+            is_eos = torch.isin(idx_next, torch.as_tensor(eos_token_id, device=idx_next.device))
+            prev_attention_mask = torch.logical_and(~is_eos, prev_attention_mask.bool()).to(attention_mask.dtype)
 
             position_ids = torch.cat((position_ids, position_ids[:, -1:] + 1), dim=-1)
 
