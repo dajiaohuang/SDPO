@@ -330,7 +330,15 @@ class RayPPOTrainer:
         # Store the tokenizer for text processing
         self.tokenizer = tokenizer
         self.tokenizer.padding_side = "left"
-        self.tokenizer.truncation_side = config.actor_rollout_ref.actor.get("self_distillation", {}).get("reprompt_truncation", "error")
+        self.reprompt_truncation = config.actor_rollout_ref.actor.get("self_distillation", {}).get(
+            "reprompt_truncation", "right"
+        )
+        if self.reprompt_truncation not in {"left", "right", "error"}:
+            raise ValueError(
+                "self_distillation.reprompt_truncation must be 'left', 'right', or 'error', "
+                f"got {self.reprompt_truncation!r}"
+            )
+        self.tokenizer.truncation_side = "right" if self.reprompt_truncation == "error" else self.reprompt_truncation
         self.processor = processor
         self.config = config
         self.reward_fn = reward_fn
@@ -747,6 +755,8 @@ class RayPPOTrainer:
 
         messages = [_build_teacher_message(i) for i in range(batch_size)]
         enable_thinking = self.config.data.apply_chat_template_kwargs.get("enable_thinking", True) if self.config.data.apply_chat_template_kwargs else True
+        max_reprompt_len = self_distillation_cfg.max_reprompt_len
+        should_truncate = self.reprompt_truncation != "error"
         teacher_prompt = self.tokenizer.apply_chat_template(
             messages,
             tokenize=True,
@@ -755,10 +765,15 @@ class RayPPOTrainer:
             continue_final_message=False,
             add_generation_prompt=True,
             enable_thinking=enable_thinking,
-            max_length=self_distillation_cfg.max_reprompt_len,
+            max_length=max_reprompt_len if should_truncate else None,
             padding=True,
-            truncation=True,
+            truncation=should_truncate,
         )
+        if not should_truncate and (teacher_prompt["attention_mask"].sum(dim=1) > max_reprompt_len).any():
+            raise ValueError(
+                "SDPO reprompt exceeds self_distillation.max_reprompt_len while "
+                "self_distillation.reprompt_truncation='error'."
+            )
         teacher_input_ids = torch.cat([teacher_prompt["input_ids"].to(device), responses], dim=1)
         teacher_attention_mask = torch.cat([teacher_prompt["attention_mask"].to(device), response_mask], dim=1)
         teacher_position_ids = compute_position_id_with_mask(teacher_attention_mask)
