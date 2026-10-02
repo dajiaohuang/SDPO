@@ -57,7 +57,7 @@ echo "  - $TEST_FILE_PATH"
 
 # Run split_tests.main on the train.json file
 echo "Running split_tests on $TRAIN_FILE_PATH"
-python data/split_tests.py --data_path "$TRAIN_FILE_PATH"
+python data/split_tests.py --json_path "$TRAIN_FILE_PATH" --output_dir "$MY_DATA_EASY_DIR"
 
 # Run preprocessing on the my_data_easy folder
 echo "Running preprocessing on my_data_easy folder"
@@ -96,7 +96,7 @@ echo "  - $TEST_FILE_PATH"
 
 # Run split_tests.main on the train.json file
 echo "Running split_tests on $TRAIN_FILE_PATH"
-python data/split_tests.py --data_path "$TRAIN_FILE_PATH"
+python data/split_tests.py --json_path "$TRAIN_FILE_PATH" --output_dir "$MY_DATA_SPLITS_DIR"
 
 # Run preprocessing on the my_data_splits folder
 echo "Running preprocessing on my_data_splits folder"
