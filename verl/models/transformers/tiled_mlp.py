@@ -141,7 +141,7 @@ class TiledMLP(torch.autograd.Function):
             x_shard.grad = x_grad.narrow(0, shard_offset, shard_step)
             incoming_grad_shard = incoming_grad.narrow(0, shard_offset, shard_step)
 
-            is_last_shard = i + 1 == shards
+            is_last_shard = i + 1 == len(x_shards)
             grad_accumulator.install_hooks(is_last_shard)
 
             with torch.enable_grad():
