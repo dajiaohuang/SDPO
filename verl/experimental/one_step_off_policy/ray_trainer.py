@@ -360,14 +360,8 @@ class OneStepOffRayTrainer(RayPPOTrainer):
         # compute global_valid tokens
         batch.meta_info["global_token_num"] = torch.sum(batch.batch["attention_mask"], dim=-1).tolist()
 
-        # Launch individual reward computations as each generation completes
-        future_reward = None
-        if self.config.reward_model.launch_reward_fn_async:
-            # Store the object reference and set up callback
-            future_reward = self._launch_individual_rewards.remote(batch, self.config, self.tokenizer)
-
-        # Return the original, now-modified `batch` and the `future_reward`
-        return metrics, timing_raw, epoch, batch, future_reward
+        # Reward computation is started in fit() after optional reward-model scores are attached.
+        return metrics, timing_raw, epoch, batch, None
 
     @staticmethod
     @ray.remote
