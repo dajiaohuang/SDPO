@@ -519,14 +519,17 @@ class RayWorkerGroup(WorkerGroup):
                 continue
             if rank == -1:
                 self._get_master_addr_port(pg)
-            for local_rank in range(max(start, pg_start) - pg_start, min(end, pg_end) - pg_start):
+            local_rank_start = max(start, pg_start) - pg_start
+            local_rank_end = min(end, pg_end) - pg_start
+            subgroup_local_world_size = local_rank_end - local_rank_start
+            for local_rank in range(local_rank_start, local_rank_end):
                 rank += 1
                 self._create_worker(
                     rank=rank,
                     pg_idx=pg_idx,
                     pg=pg,
                     local_rank=local_rank,
-                    local_world_size=local_world_size,
+                    local_world_size=subgroup_local_world_size,
                     resource_pool=resource_pool,
                     ray_cls_with_init=ray_cls_with_init,
                     worker_env=worker_env,
