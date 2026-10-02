@@ -156,7 +156,7 @@ def get_rope_index(
             position_ids.masked_fill_(attention_mask == 0, 1)
             position_ids = position_ids.unsqueeze(0).expand(3, -1).to(input_ids.device)
         else:
-            position_ids = torch.arange(input_ids.shape[1], device=input_ids.device).view(1, -1).expand(3, -1)
+            position_ids = torch.arange(input_ids.shape[-1], device=input_ids.device).view(1, -1).expand(3, -1)
 
     return position_ids
 
