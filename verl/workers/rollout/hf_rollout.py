@@ -149,9 +149,9 @@ class HFRollout(BaseRollout):
 
         response_length = response.size(1)
         delta_position_id = torch.arange(1, response_length + 1, device=position_ids.device)
-        delta_position_id = delta_position_id.unsqueeze(0).repeat(generated_batch_size, 1)
+        delta_position_id = delta_position_id.view(*([1] * (position_ids.dim() - 1)), -1)
 
-        response_position_ids = position_ids[:, -1:] + delta_position_id
+        response_position_ids = position_ids[..., -1:] + delta_position_id
         position_ids = torch.cat([position_ids, response_position_ids], dim=-1)
 
         response_attention_mask = get_response_mask(
