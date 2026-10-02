@@ -1,4 +1,5 @@
 #!/bin/bash
+set -euo pipefail
 
 USE_MEGATRON=${USE_MEGATRON:-1}
 USE_SGLANG=${USE_SGLANG:-1}
